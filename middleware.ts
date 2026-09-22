@@ -7,6 +7,7 @@ const PUBLIC_PREFIXES = [
   "/mot-de-passe-oublie",
   "/reinitialiser",
   "/premiere-configuration",
+  "/creer-admin",
   "/api/auth",
   "/api/setup",
   "/manifest.json",

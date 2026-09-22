@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function ConnexionPage() {
@@ -13,7 +13,6 @@ export default function ConnexionPage() {
 }
 
 function ConnexionForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const [identifiant, setIdentifiant] = useState("");
   const [password, setPassword] = useState("");
@@ -35,8 +34,12 @@ function ConnexionForm() {
         setError(data.error || "Erreur de connexion.");
         return;
       }
-      router.push(params.get("suite") || "/tableau-de-bord");
-      router.refresh();
+      // Navigation "dure" (pas router.push) : recharge tout depuis le
+      // serveur avec les nouveaux cookies, pour éviter un cache de
+      // navigation client obsolète juste après connexion (source d'une
+      // boucle de redirection observée sur mobile).
+      window.location.href = params.get("suite") || "/tableau-de-bord";
+      return;
     } finally {
       setLoading(false);
     }

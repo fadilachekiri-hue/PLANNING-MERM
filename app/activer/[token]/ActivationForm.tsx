@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function ActivationForm({ token, firstName }: { token: string; firstName: string }) {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +44,7 @@ export default function ActivationForm({ token, firstName }: { token: string; fi
         <h1 className="text-lg font-semibold mb-2">Compte activé ✅</h1>
         <p className="text-sm text-slate-600 mb-4">Votre identifiant de connexion, à conserver pour vos prochaines connexions :</p>
         <p className="text-xl font-mono bg-slate-100 rounded-lg py-2 px-3 mb-6">{result.identifiant}</p>
-        <button className="btn-primary w-full" onClick={() => router.push("/tableau-de-bord")}>
+        <button className="btn-primary w-full" onClick={() => (window.location.href = "/tableau-de-bord")}>
           Accéder à l'application
         </button>
       </div>

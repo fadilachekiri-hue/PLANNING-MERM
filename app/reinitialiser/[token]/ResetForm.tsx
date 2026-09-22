@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function ResetForm({ token }: { token: string }) {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +42,7 @@ export default function ResetForm({ token }: { token: string }) {
     return (
       <div className="text-center">
         <h1 className="text-lg font-semibold mb-2">Mot de passe mis à jour ✅</h1>
-        <button className="btn-primary w-full mt-4" onClick={() => router.push("/tableau-de-bord")}>
+        <button className="btn-primary w-full mt-4" onClick={() => (window.location.href = "/tableau-de-bord")}>
           Accéder à l'application
         </button>
       </div>
