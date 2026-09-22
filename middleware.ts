@@ -9,6 +9,7 @@ const PUBLIC_PREFIXES = [
   "/premiere-configuration",
   "/creer-admin",
   "/supprimer-doublon",
+  "/importer-planning",
   "/api/auth",
   "/api/setup",
   "/manifest.json",
