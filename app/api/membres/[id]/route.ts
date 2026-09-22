@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminOrOwner } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { generateIdentifiant, authEmailFor } from "@/lib/identifiant";
 import { logAction } from "@/lib/audit";
 
 const EDITABLE_FIELDS = [
@@ -43,6 +44,37 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   const admin = createAdminClient();
+
+  // Le prénom et/ou le nom changent : on régénère l'identifiant de connexion
+  // (et l'adresse technique liée) pour qu'il reste cohérent, au lieu de
+  // rester bloqué sur sa valeur de création.
+  if ("first_name" in update || "last_name" in update) {
+    const { data: current, error: currentError } = await admin
+      .from("profiles")
+      .select("first_name, last_name, identifiant")
+      .eq("id", params.id)
+      .single();
+    if (currentError || !current) {
+      return NextResponse.json({ error: currentError?.message || "Profil introuvable." }, { status: 500 });
+    }
+
+    const newFirstName = (update.first_name as string | undefined) ?? current.first_name;
+    const newLastName = (update.last_name as string | undefined) ?? current.last_name;
+
+    if (newFirstName !== current.first_name || newLastName !== current.last_name) {
+      const newIdentifiant = await generateIdentifiant(newFirstName, newLastName);
+      const newAuthEmail = authEmailFor(newIdentifiant);
+
+      const { error: authUpdateError } = await admin.auth.admin.updateUserById(params.id, { email: newAuthEmail, email_confirm: true });
+      if (authUpdateError) {
+        return NextResponse.json({ error: "Erreur de mise à jour du compte : " + authUpdateError.message }, { status: 500 });
+      }
+
+      update.identifiant = newIdentifiant;
+      update.auth_email = newAuthEmail;
+    }
+  }
+
   const { data, error } = await admin.from("profiles").update(update).eq("id", params.id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
