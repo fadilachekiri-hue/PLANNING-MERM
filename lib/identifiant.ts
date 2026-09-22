@@ -16,8 +16,10 @@ function normalize(value: string): string {
 /**
  * Génère un identifiant de connexion unique de type "prenom.nom", en
  * ajoutant un chiffre en cas d'homonymie (jean.dupont, jean.dupont2, ...).
+ * `excludeId` permet de régénérer l'identifiant d'un profil existant sans
+ * que sa propre ligne ne soit comptée comme "déjà prise".
  */
-export async function generateIdentifiant(firstName: string, lastName: string): Promise<string> {
+export async function generateIdentifiant(firstName: string, lastName: string, excludeId?: string): Promise<string> {
   const base = `${normalize(firstName)}.${normalize(lastName)}`;
   const admin = createAdminClient();
 
@@ -25,11 +27,9 @@ export async function generateIdentifiant(firstName: string, lastName: string): 
   let suffix = 1;
   // 50 tentatives est très largement suffisant pour une équipe de service.
   for (let i = 0; i < 50; i++) {
-    const { data, error } = await admin
-      .from("profiles")
-      .select("id")
-      .eq("identifiant", candidate)
-      .maybeSingle();
+    let query = admin.from("profiles").select("id").eq("identifiant", candidate);
+    if (excludeId) query = query.neq("id", excludeId);
+    const { data, error } = await query.maybeSingle();
     if (error) throw error;
     if (!data) return candidate;
     suffix += 1;

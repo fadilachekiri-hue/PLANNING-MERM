@@ -62,7 +62,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const newLastName = (update.last_name as string | undefined) ?? current.last_name;
 
     if (newFirstName !== current.first_name || newLastName !== current.last_name) {
-      const newIdentifiant = await generateIdentifiant(newFirstName, newLastName);
+      const newIdentifiant = await generateIdentifiant(newFirstName, newLastName, params.id);
       const newAuthEmail = authEmailFor(newIdentifiant);
 
       const { error: authUpdateError } = await admin.auth.admin.updateUserById(params.id, { email: newAuthEmail, email_confirm: true });

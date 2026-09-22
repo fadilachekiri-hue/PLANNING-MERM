@@ -11,6 +11,8 @@ const PUBLIC_PREFIXES = [
   "/supprimer-doublon",
   "/importer-planning",
   "/mot-de-passe-oublie-secours",
+  "/resynchroniser-identifiants",
+  "/parametrer-equipe",
   "/api/auth",
   "/api/setup",
   "/manifest.json",
