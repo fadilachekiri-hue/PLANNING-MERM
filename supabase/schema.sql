@@ -433,7 +433,7 @@ create or replace function public.protect_profile_columns()
 returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if public.is_admin_or_owner() then
+  if public.is_admin_or_owner() or auth.role() = 'service_role' then
     return new;
   end if;
 
