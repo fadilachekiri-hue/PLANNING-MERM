@@ -54,6 +54,8 @@ export default function EquipeClient({
   const [editing, setEditing] = useState<Profile | null>(null);
   const [competencesFor, setCompetencesFor] = useState<Profile | null>(null);
   const [toDelete, setToDelete] = useState<Profile | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [rowMessage, setRowMessage] = useState<Record<string, { text: string; ok: boolean; link?: string }>>({});
 
   function refresh() {
@@ -167,10 +169,19 @@ export default function EquipeClient({
 
   async function confirmDelete() {
     if (!toDelete) return;
-    const res = await fetch(`/api/membres/${toDelete.id}`, { method: "DELETE" });
-    if (res.ok) {
-      setToDelete(null);
-      refresh();
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/membres/${toDelete.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setToDelete(null);
+        refresh();
+      } else {
+        setDeleteError(data.error || "Erreur lors de la suppression.");
+      }
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -367,15 +378,20 @@ export default function EquipeClient({
       )}
 
       {toDelete && (
-        <Modal title="Confirmer la suppression" onClose={() => setToDelete(null)}>
+        <Modal title="Confirmer la suppression" onClose={() => { setToDelete(null); setDeleteError(null); }}>
           <p className="text-sm text-slate-600 mb-4">
             Supprimer définitivement <strong>{toDelete.first_name} {toDelete.last_name}</strong> ? Cette action est irréversible
             (compte, historique de connexion). Pour simplement le retirer d'une semaine de planning, utilisez plutôt « Retirer du
             planning » depuis la page Planning.
           </p>
+          {deleteError && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">{deleteError}</p>
+          )}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" onClick={() => setToDelete(null)}>Annuler</button>
-            <button className="btn-danger" onClick={confirmDelete}>Confirmer la suppression</button>
+            <button className="btn-secondary" onClick={() => { setToDelete(null); setDeleteError(null); }}>Annuler</button>
+            <button className="btn-danger" onClick={confirmDelete} disabled={deleting}>
+              {deleting ? "Suppression..." : "Confirmer la suppression"}
+            </button>
           </div>
         </Modal>
       )}

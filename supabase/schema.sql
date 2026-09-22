@@ -188,7 +188,7 @@ create table public.replacement_requests (
   machine_id uuid references public.machines(id),
   reason text,
   status text not null default 'open' check (status in ('open','filled','cancelled')),
-  created_by uuid not null references public.profiles(id),
+  created_by uuid references public.profiles(id) on delete set null,
   filled_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
@@ -243,7 +243,7 @@ create table public.email_log (
   category text not null,
   status text not null check (status in ('sent','failed')),
   error text,
-  profile_id uuid references public.profiles(id),
+  profile_id uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
