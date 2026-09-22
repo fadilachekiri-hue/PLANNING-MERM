@@ -8,6 +8,7 @@ const PUBLIC_PREFIXES = [
   "/reinitialiser",
   "/premiere-configuration",
   "/creer-admin",
+  "/supprimer-doublon",
   "/api/auth",
   "/api/setup",
   "/manifest.json",
