@@ -13,6 +13,7 @@ const PUBLIC_PREFIXES = [
   "/mot-de-passe-oublie-secours",
   "/resynchroniser-identifiants",
   "/parametrer-equipe",
+  "/assigner-postes",
   "/api/auth",
   "/api/setup",
   "/manifest.json",
