@@ -21,13 +21,34 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
-  const report = { profilesCreated: [] as string[], profilesReused: [] as string[], weeksCreated: 0, shiftsCreated: 0, shiftsSkipped: 0, errors: [] as string[] };
+  const report = {
+    profilesCreated: [] as string[],
+    profilesReused: [] as string[],
+    weeksCreated: 0,
+    shiftsCreated: 0,
+    shiftsSkipped: 0,
+    errors: [] as string[],
+    prenomsACompleter: [] as string[],
+  };
 
   // 1) Profils (un par nom de famille, "MERM" comme prénom provisoire à compléter)
+  // On retrouve chaque profil par une clé stable (import_key = nom d'origine
+  // du fichier Excel) plutôt que par le nom de famille actuel, qui peut avoir
+  // été corrigé entre deux imports — sinon on recréerait un doublon.
   const profileIdByLastName = new Map<string, string>();
   for (const lastName of IMPORT_EMPLOYEES) {
-    const { data: existing } = await admin.from("profiles").select("id").ilike("last_name", lastName).maybeSingle();
+    const { data: byKey } = await admin.from("profiles").select("id").eq("import_key", lastName).maybeSingle();
+    if (byKey) {
+      profileIdByLastName.set(lastName, byKey.id);
+      report.profilesReused.push(lastName);
+      continue;
+    }
+
+    // Profils créés avant l'ajout de import_key : on les retrouve une
+    // dernière fois par nom de famille et on leur attribue la clé stable.
+    const { data: existing } = await admin.from("profiles").select("id").ilike("last_name", lastName).is("import_key", null).maybeSingle();
     if (existing) {
+      await admin.from("profiles").update({ import_key: lastName }).eq("id", existing.id);
       profileIdByLastName.set(lastName, existing.id);
       report.profilesReused.push(lastName);
       continue;
@@ -61,6 +82,7 @@ export async function POST(request: Request) {
         status: "pending",
         job_title: "MERM",
         contracted_hours: 35,
+        import_key: lastName,
       })
       .select()
       .single();
@@ -146,6 +168,9 @@ export async function POST(request: Request) {
     }
     report.shiftsCreated++;
   }
+
+  const { data: stillPlaceholder } = await admin.from("profiles").select("last_name").eq("first_name", "MERM");
+  report.prenomsACompleter = (stillPlaceholder || []).map((p) => p.last_name);
 
   await logAction(null, "import_planning_initial", "week", null, {
     profilesCreated: report.profilesCreated.length,

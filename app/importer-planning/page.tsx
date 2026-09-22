@@ -9,6 +9,7 @@ type Report = {
   shiftsCreated: number;
   shiftsSkipped: number;
   errors: string[];
+  prenomsACompleter: string[];
 };
 
 export default function ImporterPlanningPage() {
@@ -50,6 +51,13 @@ export default function ImporterPlanningPage() {
             <li>Créneaux créés : {report.shiftsCreated}</li>
             <li>Créneaux déjà présents (ignorés) : {report.shiftsSkipped}</li>
           </ul>
+          {report.prenomsACompleter.length > 0 && (
+            <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+              <p className="font-medium mb-1">Prénom encore à compléter ({report.prenomsACompleter.length}) :</p>
+              <p>{report.prenomsACompleter.join(", ")}</p>
+              <p className="mt-1 text-xs">Si un de ces noms existe déjà correctement ailleurs dans l'équipe, c'est un doublon créé avant le correctif — supprimez celui-ci (prénom "MERM") depuis Équipe.</p>
+            </div>
+          )}
           {report.errors.length > 0 && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
               <p className="font-medium mb-1">Quelques erreurs :</p>

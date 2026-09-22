@@ -25,6 +25,7 @@ create table public.profiles (
   shift_preference text default 'none' check (shift_preference in ('morning','evening','none')),
   overtime_ok boolean default false,
   notes text,
+  import_key text,                           -- clé stable (nom d'origine du fichier importé), ne change jamais même si le prénom/nom est corrigé — sert à éviter les doublons si l'import est relancé
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
