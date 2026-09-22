@@ -92,7 +92,7 @@ create table public.weeks (
   start_date date not null unique,           -- lundi de la semaine
   status text not null default 'draft' check (status in ('draft','published')),
   published_at timestamptz,
-  published_by uuid references public.profiles(id),
+  published_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -122,8 +122,8 @@ create table public.shifts (
   machine_id uuid references public.machines(id),   -- uniquement si shift_type = 'work'
   pair_id uuid,                                      -- même valeur = binôme lié sur le même créneau/poste
   notes text,
-  created_by uuid references public.profiles(id),
-  updated_by uuid references public.profiles(id),
+  created_by uuid references public.profiles(id) on delete set null,
+  updated_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -168,7 +168,7 @@ create table public.leave_requests (
   date_end date not null,
   comment text,
   status text not null default 'pending' check (status in ('pending','approved','rejected')),
-  decided_by uuid references public.profiles(id),
+  decided_by uuid references public.profiles(id) on delete set null,
   decided_at timestamptz,
   decision_comment text,
   created_at timestamptz not null default now()
@@ -189,7 +189,7 @@ create table public.replacement_requests (
   reason text,
   status text not null default 'open' check (status in ('open','filled','cancelled')),
   created_by uuid not null references public.profiles(id),
-  filled_by uuid references public.profiles(id),
+  filled_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -228,7 +228,7 @@ create table public.access_tokens (
   type text not null check (type in ('invite','reset')),
   expires_at timestamptz not null,
   used_at timestamptz,
-  created_by uuid references public.profiles(id),
+  created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
 create index access_tokens_profile_idx on public.access_tokens(profile_id);
@@ -252,7 +252,7 @@ create table public.email_log (
 -- ----------------------------------------------------------------------------
 create table public.audit_log (
   id uuid primary key default gen_random_uuid(),
-  actor_id uuid references public.profiles(id),
+  actor_id uuid references public.profiles(id) on delete set null,
   action text not null,
   entity text not null,
   entity_id uuid,
