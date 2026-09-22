@@ -10,6 +10,7 @@ const PUBLIC_PREFIXES = [
   "/creer-admin",
   "/supprimer-doublon",
   "/importer-planning",
+  "/mot-de-passe-oublie-secours",
   "/api/auth",
   "/api/setup",
   "/manifest.json",
