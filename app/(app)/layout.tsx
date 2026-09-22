@@ -12,10 +12,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex">
       <Sidebar role={profile.role} name={`${profile.first_name} ${profile.last_name}`} />
       <div className="flex-1 min-h-screen">
-        <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-end px-6 gap-3">
+        <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-end px-6 gap-3 print:hidden">
           <ShareButton />
         </header>
-        <main className="p-6 max-w-6xl mx-auto">{children}</main>
+        <main className="p-6 max-w-6xl mx-auto print:p-0 print:max-w-none">{children}</main>
       </div>
     </div>
   );

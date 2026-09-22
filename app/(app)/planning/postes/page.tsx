@@ -1,4 +1,4 @@
-import { getCurrentProfile } from "@/lib/session";
+import { getCurrentProfile, isAdminOrOwner } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { mondayOf } from "@/lib/week";
 import PostesClient from "./PostesClient";
@@ -9,6 +9,7 @@ export default async function PostesPage({ searchParams }: { searchParams: { sem
 
   const startDate = searchParams.semaine || mondayOf(new Date());
   const supabase = createClient();
+  const admin = isAdminOrOwner(profile);
 
   const { data: week } = await supabase.from("weeks").select("*").eq("start_date", startDate).maybeSingle();
   const { data: machines } = await supabase.from("machines").select("*").eq("active", true).order("position");
@@ -20,5 +21,5 @@ export default async function PostesPage({ searchParams }: { searchParams: { sem
     shifts = data || [];
   }
 
-  return <PostesClient startDate={startDate} week={week} machines={machines || []} shifts={shifts} minStaffing={minStaffing || []} />;
+  return <PostesClient isAdmin={admin} startDate={startDate} week={week} machines={machines || []} shifts={shifts} minStaffing={minStaffing || []} />;
 }

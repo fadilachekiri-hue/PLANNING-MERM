@@ -71,11 +71,12 @@ export default function ImporterPlanningPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-brand-50 px-4">
       <div className="card w-full max-w-md p-8">
-        <h1 className="text-lg font-semibold mb-1">Importer le planning de septembre 2026</h1>
+        <h1 className="text-lg font-semibold mb-1">Importer le planning (septembre → décembre 2026)</h1>
         <p className="text-sm text-slate-500 mb-6">
           Crée les profils manquants (nom de famille seul, prénom "MERM" à corriger ensuite) et les créneaux de
-          septembre 2026 à partir du fichier Excel transmis. Sans horaire ni poste (machine) — à compléter ensuite
-          dans l'application. Peut être relancé sans créer de doublons.
+          septembre à décembre 2026 à partir du fichier Excel transmis. Horaires par défaut (matin 08h-15h36 / soir
+          13h24-21h00), sans poste (machine) assigné — à compléter ensuite dans l'application. Peut être relancé
+          sans créer de doublons.
         </p>
         <form onSubmit={submit} className="space-y-3">
           <div>

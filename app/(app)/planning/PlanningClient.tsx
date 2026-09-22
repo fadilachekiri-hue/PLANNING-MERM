@@ -94,7 +94,7 @@ export default function PlanningClient({
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <button className="btn-secondary" onClick={() => goTo(-1)}>← Semaine précédente</button>
+          <button className="btn-secondary print:hidden" onClick={() => goTo(-1)}>← Semaine précédente</button>
           <div className="text-center">
             <p className="font-semibold">{formatWeekLabel(startDate)}</p>
             {week && (
@@ -103,9 +103,10 @@ export default function PlanningClient({
               </span>
             )}
           </div>
-          <button className="btn-secondary" onClick={() => goTo(1)}>Semaine suivante →</button>
+          <button className="btn-secondary print:hidden" onClick={() => goTo(1)}>Semaine suivante →</button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 print:hidden">
+          <button className="btn-secondary" onClick={() => window.print()}>Imprimer / PDF</button>
           <Link href="/planning/postes" className="btn-secondary">Vue par postes</Link>
           {isAdmin && !week && (
             <button className="btn-primary" onClick={createWeek} disabled={creating}>

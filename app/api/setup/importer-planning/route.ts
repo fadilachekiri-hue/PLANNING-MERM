@@ -3,9 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { generateIdentifiant, authEmailFor } from "@/lib/identifiant";
 import { logAction } from "@/lib/audit";
 import { randomBytes } from "crypto";
-import { IMPORT_EMPLOYEES, IMPORT_WEEKS, IMPORT_SHIFTS } from "@/lib/import-septembre-2026";
+import { IMPORT_EMPLOYEES, IMPORT_WEEKS, IMPORT_SHIFTS } from "@/lib/import-planning-2026";
 
-// Import initial (septembre 2026) depuis le fichier Excel fourni par la cadre.
+// Import initial (septembre à décembre 2026) depuis le fichier Excel fourni par la cadre.
 // Protégé par SETUP_SECRET, à usage unique — mais rejouable sans risque de
 // doublon : les profils et semaines déjà présents sont réutilisés, les
 // créneaux déjà importés (même profil/semaine/jour) sont ignorés.

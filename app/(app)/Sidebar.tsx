@@ -29,7 +29,7 @@ export default function Sidebar({ role, name }: { role: Role; name: string }) {
   }
 
   return (
-    <aside className="w-64 shrink-0 border-r border-slate-200 bg-white min-h-screen flex flex-col">
+    <aside className="w-64 shrink-0 border-r border-slate-200 bg-white min-h-screen flex flex-col print:hidden">
       <div className="p-5 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-lg bg-brand-600 text-white flex items-center justify-center font-bold text-sm">PM</div>
