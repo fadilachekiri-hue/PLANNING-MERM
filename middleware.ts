@@ -14,6 +14,7 @@ const PUBLIC_PREFIXES = [
   "/resynchroniser-identifiants",
   "/parametrer-equipe",
   "/assigner-postes",
+  "/retirer-admins-planning",
   "/api/auth",
   "/api/setup",
   "/manifest.json",

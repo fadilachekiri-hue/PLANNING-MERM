@@ -28,7 +28,9 @@ export default async function PlanningPage({ searchParams }: { searchParams: { s
 
   let allActiveProfiles: any[] = [];
   if (admin) {
-    const { data } = await supabase.from("profiles").select("*").eq("status", "active").order("last_name");
+    // Seuls les MERM (role "member") sont proposables sur le planning — jamais
+    // la propriétaire ou les admins.
+    const { data } = await supabase.from("profiles").select("*").eq("status", "active").eq("role", "member").order("last_name");
     allActiveProfiles = data || [];
   }
 

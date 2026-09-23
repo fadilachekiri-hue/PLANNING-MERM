@@ -19,7 +19,8 @@ export async function POST(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     week = created;
 
-    const { data: activeProfiles } = await admin.from("profiles").select("id").eq("status", "active");
+    // Seuls les MERM (role "member") sont pré-inclus — jamais la propriétaire ou les admins.
+    const { data: activeProfiles } = await admin.from("profiles").select("id").eq("status", "active").eq("role", "member");
     if (activeProfiles && activeProfiles.length > 0) {
       await admin.from("week_members").insert(activeProfiles.map((p) => ({ week_id: week!.id, profile_id: p.id })));
     }

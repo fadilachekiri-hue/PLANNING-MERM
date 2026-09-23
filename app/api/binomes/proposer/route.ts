@@ -31,11 +31,13 @@ export async function POST(request: Request) {
 
   const { data: competencies } = await admin
     .from("competencies")
-    .select("profile_id, level, profiles!inner(id, first_name, last_name, status, shift_preference, overtime_ok, contracted_hours)")
+    .select("profile_id, level, profiles!inner(id, first_name, last_name, status, role, shift_preference, overtime_ok, contracted_hours)")
     .eq("machine_id", machineId)
     .in("level", ["training", "autonomous"]);
 
-  const eligible = (competencies || []).filter((c: any) => c.profiles.status === "active");
+  // Seuls les MERM (role "member") sont proposables en binôme — jamais la
+  // propriétaire ou les admins, même si une compétence leur a été attribuée par erreur.
+  const eligible = (competencies || []).filter((c: any) => c.profiles.status === "active" && c.profiles.role === "member");
 
   const monday = mondayOf(new Date(day + "T00:00:00"));
   const { data: week } = await admin.from("weeks").select("id").eq("start_date", monday).maybeSingle();
