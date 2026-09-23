@@ -30,14 +30,50 @@ export async function POST(request: Request) {
     postesAssignesNovDec: 0,
     creneauxCreesNovDec: 0,
     erreursNovDec: [] as string[],
+    avertissement: null as string | null,
   };
 
   const { data: machines } = await admin.from("machines").select("id, name").eq("active", true);
   const machineIdByName = new Map((machines || []).map((m) => [m.name, m.id]));
 
+  const importKeyProbe = await admin.from("profiles").select("import_key").limit(1);
+  const importKeyMissing = !!importKeyProbe.error;
+  if (importKeyMissing) {
+    report.avertissement =
+      "La colonne import_key n'existe pas encore en base (rapprochement fait par nom de famille à la place, moins fiable). Exécutez dans Supabase SQL Editor : alter table public.profiles add column if not exists import_key text;";
+  }
+
+  // Nom de famille attendu (avant correction éventuelle) pour chaque clé
+  // d'import — sert de repli si la colonne import_key est absente/vide.
+  const FALLBACK_LAST_NAME: Record<string, string> = {
+    "CAREMENTRANT": "Carementrant",
+    "CHARBONNEL": "Charbonnel",
+    "CHAULIAC": "Chauliac",
+    "DUMONT": "Dumont",
+    "EL ZAYAT": "El Zayat",
+    "FONTENEAU": "Fonteneau",
+    "GAUTIER": "Gautier",
+    "GENET": "Genet",
+    "HICQUEL": "Hicquel",
+    "LEDIEU": "Ledieu",
+    "RENOU": "Renou",
+    "VINCENOT": "Vincenot",
+    "CHANEZ R": "Rahmani",
+    "FANTA C": "Coulibaly",
+    "JALALL B": "Jallal",
+    "FAUCHEUX": "Faucheux",
+    "TEIXEIRA": "Teixeira",
+  };
+
   async function findProfileId(importKey: string): Promise<string | null> {
-    const { data } = await admin.from("profiles").select("id").eq("import_key", importKey).maybeSingle();
-    return data?.id || null;
+    if (!importKeyMissing) {
+      const byKey = await admin.from("profiles").select("id").eq("import_key", importKey).maybeSingle();
+      if (byKey.data) return byKey.data.id;
+    }
+
+    const fallbackName = FALLBACK_LAST_NAME[importKey] || importKey;
+    const byName = await admin.from("profiles").select("id").ilike("last_name", fallbackName).maybeSingle();
+    return byName.data?.id || null;
   }
 
   const profileCache = new Map<string, string | null>();

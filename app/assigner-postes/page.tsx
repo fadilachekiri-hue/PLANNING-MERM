@@ -8,6 +8,7 @@ type Report = {
   postesAssignesNovDec: number;
   creneauxCreesNovDec: number;
   erreursNovDec: string[];
+  avertissement: string | null;
 };
 
 export default function AssignerPostesPage() {
@@ -42,6 +43,9 @@ export default function AssignerPostesPage() {
       <div className="min-h-screen flex items-center justify-center bg-brand-50 px-4">
         <div className="card w-full max-w-lg p-8">
           <h1 className="text-lg font-semibold mb-4">Terminé ✅</h1>
+          {report.avertissement && (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">{report.avertissement}</p>
+          )}
           <ul className="text-sm text-slate-600 space-y-1 mb-4">
             <li>Postes assignés (septembre-octobre) : {report.postesAssignesSeptOct}</li>
             <li>Créneaux proposés (novembre-décembre) créés : {report.creneauxCreesNovDec}</li>
