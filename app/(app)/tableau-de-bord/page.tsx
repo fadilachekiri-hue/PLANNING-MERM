@@ -53,11 +53,13 @@ export default async function DashboardPage() {
     );
   }
 
-  const [{ count: activeCount }, { data: pendingLeaves }, { data: openReplacements }, { data: minStaffing }] = await Promise.all([
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const [{ count: activeCount }, { data: pendingLeaves }, { data: openReplacements }, { data: minStaffing }, { data: todayClosures }] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("leave_requests").select("id, profiles(first_name, last_name), type, date_start, date_end").eq("status", "pending"),
     supabase.from("replacement_requests").select("id, day, start_time, end_time").eq("status", "open"),
-    supabase.from("min_staffing").select("*"),
+    supabase.from("min_staffing").select("*, machines(name)"),
+    supabase.from("machine_closures").select("*").eq("date", todayIso),
   ]);
 
   let todayPresent: any[] = [];
@@ -74,6 +76,10 @@ export default async function DashboardPage() {
   const todayShortages = (minStaffing || [])
     .filter((r) => r.day_of_week === todayDow)
     .filter((r) => {
+      const closed = (todayClosures || []).some(
+        (c) => c.machine_id === r.machine_id && (!c.start_time || overlaps(c.start_time, c.end_time, r.start_time, r.end_time))
+      );
+      if (closed) return false;
       const covering = todayPresent.filter((s) => s.machine_id === r.machine_id && overlaps(s.start_time, s.end_time, r.start_time, r.end_time));
       return covering.length < r.min_count;
     });
@@ -92,7 +98,7 @@ export default async function DashboardPage() {
         <div className="card p-4 border-red-200 bg-red-50">
           <p className="text-sm font-medium text-red-700">⚠ Effectifs insuffisants aujourd'hui</p>
           <ul className="text-xs text-red-600 mt-1 list-disc pl-4">
-            {todayShortages.map((s: any, i: number) => <li key={i}>Poste concerné : créneau {s.start_time?.slice(0, 5)}-{s.end_time?.slice(0, 5)}</li>)}
+            {todayShortages.map((s: any, i: number) => <li key={i}>{s.machines?.name || "Poste"} — créneau {s.start_time?.slice(0, 5)}-{s.end_time?.slice(0, 5)}</li>)}
           </ul>
           <Link href="/planning/postes" className="text-xs text-red-700 underline">Voir la vue par postes</Link>
         </div>

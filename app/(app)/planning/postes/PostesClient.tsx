@@ -17,6 +17,7 @@ export default function PostesClient({
   machines,
   shifts,
   minStaffing,
+  closures,
 }: {
   isAdmin: boolean;
   startDate: string;
@@ -24,6 +25,7 @@ export default function PostesClient({
   machines: any[];
   shifts: any[];
   minStaffing: any[];
+  closures: any[];
 }) {
   const router = useRouter();
   const [assigning, setAssigning] = useState<string | null>(null);
@@ -115,12 +117,20 @@ export default function PostesClient({
               </div>
               <div className="grid grid-cols-7 gap-2">
                 {DAY_LABELS.map((label, day) => {
+                  const dateIso = addDaysToIso(startDate, day);
+                  const dayClosures = closures.filter((c) => c.machine_id === machine.id && c.date === dateIso);
+                  const closedAllDay = dayClosures.some((c) => !c.start_time);
+
                   const dayShifts = shifts.filter((s) => s.machine_id === machine.id && s.day_of_week === day);
                   const rules = minStaffing.filter((r) => r.machine_id === machine.id && r.day_of_week === day);
-                  const shortages = rules.filter((r) => {
-                    const covering = dayShifts.filter((s) => overlaps(s.start_time, s.end_time, r.start_time, r.end_time));
-                    return covering.length < r.min_count;
-                  });
+                  const shortages = closedAllDay
+                    ? []
+                    : rules.filter((r) => {
+                        const closedNow = dayClosures.some((c) => c.start_time && overlaps(c.start_time, c.end_time, r.start_time, r.end_time));
+                        if (closedNow) return false;
+                        const covering = dayShifts.filter((s) => overlaps(s.start_time, s.end_time, r.start_time, r.end_time));
+                        return covering.length < r.min_count;
+                      });
 
                   const xstrahlWithoutScanner =
                     machine.id === xstrahlMachine?.id &&
@@ -132,10 +142,19 @@ export default function PostesClient({
                     });
 
                   return (
-                    <div key={day} className="border border-slate-100 rounded-lg p-2 min-h-[90px]">
+                    <div key={day} className={`border rounded-lg p-2 min-h-[90px] ${closedAllDay ? "border-slate-200 bg-slate-50" : "border-slate-100"}`}>
                       <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
-                      {dayShifts.length === 0 && <p className="text-xs text-slate-300">—</p>}
-                      {dayShifts.map((s: any) => (
+                      {closedAllDay && (
+                        <p className="text-xs text-slate-500 font-medium">🔧 Fermé{dayClosures[0]?.reason ? ` — ${dayClosures[0].reason}` : ""}</p>
+                      )}
+                      {!closedAllDay && dayClosures.length > 0 && (
+                        <p className="text-xs text-slate-500 mb-1">
+                          🔧 Fermé {dayClosures[0].start_time.slice(0, 5)}-{dayClosures[0].end_time.slice(0, 5)}
+                          {dayClosures[0].reason ? ` — ${dayClosures[0].reason}` : ""}
+                        </p>
+                      )}
+                      {!closedAllDay && dayShifts.length === 0 && <p className="text-xs text-slate-300">—</p>}
+                      {!closedAllDay && dayShifts.map((s: any) => (
                         <p key={s.id} className="text-xs mb-1">
                           {s.profiles?.first_name} {s.profiles?.last_name?.charAt(0)}. <span className="text-slate-400">{s.start_time?.slice(0, 5)}-{s.end_time?.slice(0, 5)}</span>
                         </p>

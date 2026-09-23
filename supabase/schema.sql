@@ -52,6 +52,22 @@ create table public.machines (
   created_at timestamptz not null default now()
 );
 
+-- Fermeture temporaire d'un poste (maintenance, panne...). N'affecte pas
+-- l'historique ni les créneaux déjà planifiés : sert à exclure ce poste des
+-- alertes d'effectif et à le signaler dans la Vue par postes pour la
+-- période concernée. Heures nulles = fermé toute la journée.
+create table public.machine_closures (
+  id uuid primary key default gen_random_uuid(),
+  machine_id uuid not null references public.machines(id) on delete cascade,
+  date date not null,
+  start_time time,
+  end_time time,
+  reason text,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index machine_closures_date_idx on public.machine_closures(machine_id, date);
+
 insert into public.machines (name, color_hex, position) values
   ('Clinac', '#c9a227', 1),
   ('Unity', '#1e3a8a', 2),
@@ -326,6 +342,10 @@ create policy pairing_rules_write_admin on public.pairing_rules for all using (p
 
 create policy min_staffing_select_all on public.min_staffing for select using (auth.uid() is not null);
 create policy min_staffing_write_admin on public.min_staffing for all using (public.is_admin_or_owner()) with check (public.is_admin_or_owner());
+
+alter table public.machine_closures enable row level security;
+create policy machine_closures_select_all on public.machine_closures for select using (auth.uid() is not null);
+create policy machine_closures_write_admin on public.machine_closures for all using (public.is_admin_or_owner()) with check (public.is_admin_or_owner());
 
 -- COMPÉTENCES : visibles par la personne concernée et les administratrices ;
 -- modifiables uniquement par les administratrices.

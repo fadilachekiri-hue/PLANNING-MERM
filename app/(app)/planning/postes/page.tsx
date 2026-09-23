@@ -1,6 +1,6 @@
 import { getCurrentProfile, isAdminOrOwner } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
-import { mondayOf } from "@/lib/week";
+import { mondayOf, addDaysToIso } from "@/lib/week";
 import PostesClient from "./PostesClient";
 
 export default async function PostesPage({ searchParams }: { searchParams: { semaine?: string } }) {
@@ -14,6 +14,11 @@ export default async function PostesPage({ searchParams }: { searchParams: { sem
   const { data: week } = await supabase.from("weeks").select("*").eq("start_date", startDate).maybeSingle();
   const { data: machines } = await supabase.from("machines").select("*").eq("active", true).order("position");
   const { data: minStaffing } = await supabase.from("min_staffing").select("*");
+  const { data: closures } = await supabase
+    .from("machine_closures")
+    .select("*")
+    .gte("date", startDate)
+    .lte("date", addDaysToIso(startDate, 6));
 
   let shifts: any[] = [];
   if (week) {
@@ -21,5 +26,15 @@ export default async function PostesPage({ searchParams }: { searchParams: { sem
     shifts = data || [];
   }
 
-  return <PostesClient isAdmin={admin} startDate={startDate} week={week} machines={machines || []} shifts={shifts} minStaffing={minStaffing || []} />;
+  return (
+    <PostesClient
+      isAdmin={admin}
+      startDate={startDate}
+      week={week}
+      machines={machines || []}
+      shifts={shifts}
+      minStaffing={minStaffing || []}
+      closures={closures || []}
+    />
+  );
 }
