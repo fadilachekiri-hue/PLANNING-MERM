@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAction } from "@/lib/audit";
 import { SEPT_OCT_MACHINES } from "@/lib/machines-septembre-octobre-2026";
 import { NOV_DEC_PROPOSAL } from "@/lib/proposition-novembre-decembre-2026";
+import { IMPORT_SHIFTS } from "@/lib/import-planning-2026";
 
 const MORNING = { start: "08:00", end: "15:36" };
 const EVENING = { start: "13:24", end: "21:00" };
@@ -139,8 +140,35 @@ export async function POST(request: Request) {
       .eq("day_of_week", a.dayOfWeek)
       .eq("shift_type", "work")
       .maybeSingle();
+
     if (!shift) {
-      report.creneauxIntrouvablesSeptOct.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : créneau de travail absent en base`);
+      // Le créneau devrait exister (présent dans les données d'import) mais a disparu de la base
+      // (probablement supprimé lors d'un nettoyage de doublons de profil). On le recrée à partir
+      // des données d'import d'origine plutôt que d'échouer.
+      const source = IMPORT_SHIFTS.find(
+        (s) => s.lastName === a.lastName && s.weekStart === a.weekStart && s.dayOfWeek === a.dayOfWeek && s.shiftType === "work"
+      );
+      if (!source) {
+        report.creneauxIntrouvablesSeptOct.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : créneau de travail absent en base et introuvable dans les données d'import`);
+        continue;
+      }
+      const notes = a.machine === "Scanner" ? "Couvre aussi X-STRAHL 13h-14h" : source.notes;
+      await admin.from("week_members").upsert({ week_id: wid, profile_id: pid }, { onConflict: "week_id,profile_id" });
+      const { error } = await admin.from("shifts").insert({
+        week_id: wid,
+        profile_id: pid,
+        day_of_week: a.dayOfWeek,
+        start_time: source.startTime,
+        end_time: source.endTime,
+        shift_type: "work",
+        machine_id: machineId,
+        notes,
+      });
+      if (error) {
+        report.creneauxIntrouvablesSeptOct.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : échec de recréation du créneau (${error.message})`);
+        continue;
+      }
+      report.postesAssignesSeptOct++;
       continue;
     }
 
@@ -171,13 +199,13 @@ export async function POST(request: Request) {
         .eq("day_of_week", p.dayOfWeek)
         .eq("shift_type", "work")
         .maybeSingle();
-      if (!shift) {
-        report.erreursNovDec.push(`${p.importKey} ${p.weekStart} j${p.dayOfWeek} : créneau existant introuvable.`);
+      if (shift) {
+        await admin.from("shifts").update({ machine_id: machineId || null, notes: noteText }).eq("id", shift.id);
+        report.postesAssignesNovDec++;
         continue;
       }
-      await admin.from("shifts").update({ machine_id: machineId || null, notes: noteText }).eq("id", shift.id);
-      report.postesAssignesNovDec++;
-      continue;
+      // Le créneau attendu a disparu de la base (probablement supprimé lors d'un nettoyage de
+      // doublons de profil) : on le recrée au lieu d'échouer.
     }
 
     // Ne pas créer de doublon si ce créneau a déjà été proposé lors d'un essai précédent.
