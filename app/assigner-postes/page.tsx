@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 type Report = {
+  membresCompletes: number;
   postesAssignesSeptOct: number;
   creneauxIntrouvablesSeptOct: string[];
   postesAssignesNovDec: number;
@@ -47,6 +48,7 @@ export default function AssignerPostesPage() {
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">{report.avertissement}</p>
           )}
           <ul className="text-sm text-slate-600 space-y-1 mb-4">
+            <li>Membres ajoutés aux semaines (tous MERM, jusqu'à fin décembre) : {report.membresCompletes}</li>
             <li>Postes assignés (septembre-octobre) : {report.postesAssignesSeptOct}</li>
             <li>Créneaux proposés (novembre-décembre) créés : {report.creneauxCreesNovDec}</li>
             <li>Postes assignés sur créneaux déjà existants (novembre-décembre) : {report.postesAssignesNovDec}</li>
@@ -83,7 +85,8 @@ export default function AssignerPostesPage() {
       <div className="card w-full max-w-md p-8">
         <h1 className="text-lg font-semibold mb-1">Assigner les postes (septembre → décembre)</h1>
         <p className="text-sm text-slate-500 mb-6">
-          Septembre-octobre : assigne le poste (Clinac/Unity/Versa HD/Scanner) déduit des couleurs du fichier Excel
+          S'assure d'abord que tous les MERM apparaissent sur chaque semaine (même sans créneau posé). Puis,
+          septembre-octobre : assigne le poste (Clinac/Unity/Versa HD/Scanner) déduit des couleurs du fichier Excel
           sur les créneaux déjà importés. Novembre-décembre : propose un planning complet (brouillon, non publié)
           à partir des habilitations et contraintes de chaque manip — à relire et publier semaine par semaine.
         </p>

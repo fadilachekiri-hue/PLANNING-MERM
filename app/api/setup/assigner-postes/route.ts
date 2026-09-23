@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAction } from "@/lib/audit";
 import { SEPT_OCT_MACHINES } from "@/lib/machines-septembre-octobre-2026";
 import { NOV_DEC_PROPOSAL } from "@/lib/proposition-novembre-decembre-2026";
-import { IMPORT_SHIFTS } from "@/lib/import-planning-2026";
+import { IMPORT_SHIFTS, IMPORT_EMPLOYEES, IMPORT_WEEKS } from "@/lib/import-planning-2026";
 
 const MORNING = { start: "08:00", end: "15:36" };
 const EVENING = { start: "13:24", end: "21:00" };
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
   const report = {
+    membresCompletes: 0,
     postesAssignesSeptOct: 0,
     creneauxIntrouvablesSeptOct: [] as string[],
     postesAssignesNovDec: 0,
@@ -112,6 +113,23 @@ export async function POST(request: Request) {
       weekCache.set(weekStart, data?.id || null);
     }
     return weekCache.get(weekStart)!;
+  }
+
+  // 0) S'assurer que tous les MERM importés apparaissent comme membres de
+  // chaque semaine importée (jusqu'à fin décembre), même sans créneau encore
+  // posé — pour que le planning ne soit jamais vide à l'écran et que la
+  // cadre puisse programmer manuellement chacun. Rejouable sans doublon.
+  for (const weekStart of IMPORT_WEEKS) {
+    const wid = await weekId(weekStart);
+    if (!wid) continue;
+    const { data: existingMembers } = await admin.from("week_members").select("profile_id").eq("week_id", wid);
+    const existingIds = new Set((existingMembers || []).map((m) => m.profile_id));
+    for (const lastName of IMPORT_EMPLOYEES) {
+      const pid = await profileId(lastName);
+      if (!pid || existingIds.has(pid)) continue;
+      const { error } = await admin.from("week_members").upsert({ week_id: wid, profile_id: pid }, { onConflict: "week_id,profile_id" });
+      if (!error) report.membresCompletes++;
+    }
   }
 
   // 1) Septembre-octobre : assigner le poste sur les créneaux déjà importés
