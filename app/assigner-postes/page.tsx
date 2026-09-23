@@ -54,14 +54,17 @@ export default function AssignerPostesPage() {
           {report.creneauxIntrouvablesSeptOct.length > 0 && (
             <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
               <p className="font-medium mb-1">Créneaux non retrouvés (septembre-octobre, {report.creneauxIntrouvablesSeptOct.length}) :</p>
-              <p className="text-xs">{report.creneauxIntrouvablesSeptOct.slice(0, 20).join(", ")}{report.creneauxIntrouvablesSeptOct.length > 20 ? "…" : ""}</p>
+              <ul className="text-xs list-disc pl-4">
+                {report.creneauxIntrouvablesSeptOct.slice(0, 200).map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
+              {report.creneauxIntrouvablesSeptOct.length > 200 && <p className="text-xs mt-1">… et {report.creneauxIntrouvablesSeptOct.length - 200} de plus.</p>}
             </div>
           )}
           {report.erreursNovDec.length > 0 && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
               <p className="font-medium mb-1">Erreurs (novembre-décembre) :</p>
               <ul className="list-disc pl-4 text-xs">
-                {report.erreursNovDec.slice(0, 20).map((e, i) => (
+                {report.erreursNovDec.slice(0, 200).map((e, i) => (
                   <li key={i}>{e}</li>
                 ))}
               </ul>

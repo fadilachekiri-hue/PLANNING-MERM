@@ -65,6 +65,12 @@ export async function POST(request: Request) {
     "TEIXEIRA": "Teixeira",
   };
 
+  // Repli supplémentaire pour les noms composés/ambigus (ordre nom/prénom
+  // incertain dans le fichier source).
+  const EXTRA_TERMS: Record<string, string[]> = {
+    "JALALL B": ["Jallal", "Benhmidane"],
+  };
+
   async function findProfileId(importKey: string): Promise<string | null> {
     if (!importKeyMissing) {
       const byKey = await admin.from("profiles").select("id").eq("import_key", importKey).maybeSingle();
@@ -72,8 +78,24 @@ export async function POST(request: Request) {
     }
 
     const fallbackName = FALLBACK_LAST_NAME[importKey] || importKey;
-    const byName = await admin.from("profiles").select("id").ilike("last_name", fallbackName).maybeSingle();
-    return byName.data?.id || null;
+
+    const byLastName = await admin.from("profiles").select("id").ilike("last_name", fallbackName).maybeSingle();
+    if (byLastName.data) return byLastName.data.id;
+
+    // Repli élargi : le prénom/nom peut avoir été inversé ou différent de
+    // ce qu'on attendait. On cherche le mot dans n'importe quel des deux
+    // champs, en essayant chaque terme candidat connu pour ce cas.
+    const terms = [fallbackName, ...(EXTRA_TERMS[importKey] || [])];
+    for (const term of terms) {
+      const { data: broad } = await admin
+        .from("profiles")
+        .select("id")
+        .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%`)
+        .limit(1)
+        .maybeSingle();
+      if (broad) return broad.id;
+    }
+    return null;
   }
 
   const profileCache = new Map<string, string | null>();
@@ -96,8 +118,16 @@ export async function POST(request: Request) {
     const pid = await profileId(a.lastName);
     const wid = await weekId(a.weekStart);
     const machineId = machineIdByName.get(a.machine);
-    if (!pid || !wid || !machineId) {
-      report.creneauxIntrouvablesSeptOct.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek}`);
+    if (!pid) {
+      report.creneauxIntrouvablesSeptOct.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : profil introuvable`);
+      continue;
+    }
+    if (!wid) {
+      report.creneauxIntrouvablesSeptOct.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : semaine introuvable`);
+      continue;
+    }
+    if (!machineId) {
+      report.creneauxIntrouvablesSeptOct.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : poste "${a.machine}" introuvable`);
       continue;
     }
 
@@ -110,7 +140,7 @@ export async function POST(request: Request) {
       .eq("shift_type", "work")
       .maybeSingle();
     if (!shift) {
-      report.creneauxIntrouvablesSeptOct.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek}`);
+      report.creneauxIntrouvablesSeptOct.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : créneau de travail absent en base`);
       continue;
     }
 
