@@ -2,7 +2,6 @@ import Link from "next/link";
 import { getCurrentProfile, isAdminOrOwner } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { mondayOf } from "@/lib/week";
-import { computeWorkedHours } from "@/lib/hours";
 import { DAY_LABELS } from "@/lib/types";
 
 function todayDowIndex(): number {
@@ -28,13 +27,11 @@ export default async function DashboardPage() {
     }
     const { data: pendingRequests } = await supabase.from("leave_requests").select("id").eq("profile_id", profile.id).eq("status", "pending");
     const { data: unread } = await supabase.from("notifications").select("id").eq("profile_id", profile.id).is("read_at", null);
-    const worked = computeWorkedHours(myShifts);
 
     return (
       <div className="space-y-6">
         <h1 className="text-xl font-semibold">Bonjour {profile.first_name} 👋</h1>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat label="Heures planifiées cette semaine" value={`${worked}h / ${profile.contracted_hours}h`} />
           <Stat label="Demandes en attente" value={String(pendingRequests?.length || 0)} />
           <Stat label="Notifications non lues" value={String(unread?.length || 0)} />
         </div>

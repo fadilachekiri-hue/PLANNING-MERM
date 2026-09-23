@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addDaysToIso, formatWeekLabel } from "@/lib/week";
-import { computeWorkedHours, detectOverlaps } from "@/lib/hours";
+import { detectOverlaps } from "@/lib/hours";
 import { DAY_LABELS, SHIFT_TYPE_LABELS, type Shift, type ShiftType } from "@/lib/types";
 
 const TYPE_COLORS: Record<ShiftType, string> = {
@@ -143,16 +143,11 @@ export default function PlanningClient({
             <tbody>
               {members.map((member) => {
                 const memberShifts = shifts.filter((s) => s.profile_id === member.id);
-                const worked = computeWorkedHours(memberShifts);
-                const diff = Math.round((worked - member.contracted_hours) * 100) / 100;
                 const overlapPairs = detectOverlaps(memberShifts);
                 return (
                   <tr key={member.id} className="border-t border-slate-100 align-top">
                     <td className="px-3 py-3 sticky left-0 bg-white">
                       <p className="font-medium">{member.first_name} {member.last_name}</p>
-                      <p className={`text-xs mt-0.5 ${diff < 0 ? "text-red-600" : diff > 0 ? "text-amber-600" : "text-slate-400"}`}>
-                        {worked}h / {member.contracted_hours}h ({diff >= 0 ? "+" : ""}{diff}h)
-                      </p>
                       {overlapPairs.length > 0 && <p className="text-xs text-red-600 mt-0.5">⚠ Chevauchement d'horaires</p>}
                       {isAdmin && (
                         <button className="text-xs text-red-500 hover:underline mt-1" onClick={() => removeMember(member.id, `${member.first_name} ${member.last_name}`)}>
