@@ -20,7 +20,9 @@ export async function POST(request: Request) {
     week = created;
 
     // Seuls les MERM (role "member") sont pré-inclus — jamais la propriétaire ou les admins.
-    const { data: activeProfiles } = await admin.from("profiles").select("id").eq("status", "active").eq("role", "member");
+    // On inclut aussi les comptes encore "pending" (pas encore activés) : sinon ils
+    // n'apparaîtraient jamais sur les semaines créées avant leur activation.
+    const { data: activeProfiles } = await admin.from("profiles").select("id").neq("status", "disabled").eq("role", "member");
     if (activeProfiles && activeProfiles.length > 0) {
       await admin.from("week_members").insert(activeProfiles.map((p) => ({ week_id: week!.id, profile_id: p.id })));
     }

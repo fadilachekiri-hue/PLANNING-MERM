@@ -29,8 +29,9 @@ export default async function PlanningPage({ searchParams }: { searchParams: { s
   let allActiveProfiles: any[] = [];
   if (admin) {
     // Seuls les MERM (role "member") sont proposables sur le planning — jamais
-    // la propriétaire ou les admins.
-    const { data } = await supabase.from("profiles").select("*").eq("status", "active").eq("role", "member").order("last_name");
+    // la propriétaire ou les admins. On inclut aussi les comptes "pending"
+    // (pas encore activés), sinon ils seraient impossibles à ajouter manuellement.
+    const { data } = await supabase.from("profiles").select("*").neq("status", "disabled").eq("role", "member").order("last_name");
     allActiveProfiles = data || [];
   }
 
