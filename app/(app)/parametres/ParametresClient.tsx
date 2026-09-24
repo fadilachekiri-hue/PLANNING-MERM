@@ -114,7 +114,7 @@ export default function ParametresClient({ machines, rules, minStaffing, closure
             {machines.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
           <select className="input" value={staffForm.dayOfWeek} onChange={(e) => setStaffForm({ ...staffForm, dayOfWeek: Number(e.target.value) })}>
-            {DAY_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+            {DAY_LABELS.slice(0, 6).map((d, i) => <option key={i} value={i}>{d}</option>)}
           </select>
           <input type="time" className="input" value={staffForm.startTime} onChange={(e) => setStaffForm({ ...staffForm, startTime: e.target.value })} />
           <input type="time" className="input" value={staffForm.endTime} onChange={(e) => setStaffForm({ ...staffForm, endTime: e.target.value })} />

@@ -7,7 +7,9 @@ export default async function PlanningPage({ searchParams }: { searchParams: { s
   const profile = await getCurrentProfile();
   if (!profile) return null;
 
-  const startDate = searchParams.semaine || mondayOf(new Date());
+  // On force toujours le lundi de la semaine, même si le paramètre d'URL
+  // (lien, favori...) pointe sur un autre jour — évite les semaines décalées.
+  const startDate = mondayOf(searchParams.semaine ? new Date(searchParams.semaine + "T00:00:00") : new Date());
   const supabase = createClient();
   const admin = isAdminOrOwner(profile);
 

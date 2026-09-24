@@ -135,7 +135,7 @@ export default function PlanningClient({
             <thead>
               <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
                 <th className="text-left px-3 py-3 sticky left-0 bg-slate-50 min-w-[180px]">Nom</th>
-                {DAY_LABELS.map((d, i) => (
+                {DAY_LABELS.slice(0, 6).map((d, i) => (
                   <th key={i} className="text-left px-2 py-3 min-w-[150px]">{d}</th>
                 ))}
               </tr>
@@ -155,7 +155,7 @@ export default function PlanningClient({
                         </button>
                       )}
                     </td>
-                    {[0, 1, 2, 3, 4, 5, 6].map((day) => {
+                    {[0, 1, 2, 3, 4, 5].map((day) => {
                       const dayShifts = memberShifts.filter((s) => s.day_of_week === day);
                       return (
                         <td key={day} className="px-2 py-2">

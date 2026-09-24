@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminOrOwner } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { mondayOf } from "@/lib/week";
 
 // Récupère la semaine (brouillon) correspondant à ce lundi, ou la crée si
 // elle n'existe pas encore, avec tous les membres actifs pré-inclus.
@@ -8,8 +9,11 @@ export async function POST(request: Request) {
   const actor = await requireAdminOrOwner();
   if (!actor) return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
 
-  const { startDate } = await request.json();
-  if (!startDate) return NextResponse.json({ error: "Date de semaine requise." }, { status: 400 });
+  const { startDate: rawStartDate } = await request.json();
+  if (!rawStartDate) return NextResponse.json({ error: "Date de semaine requise." }, { status: 400 });
+  // On force toujours le lundi de la semaine, même si l'appelant envoie une
+  // autre date — évite de créer des semaines décalées.
+  const startDate = mondayOf(new Date(rawStartDate + "T00:00:00"));
 
   const admin = createAdminClient();
   let { data: week } = await admin.from("weeks").select("*").eq("start_date", startDate).maybeSingle();

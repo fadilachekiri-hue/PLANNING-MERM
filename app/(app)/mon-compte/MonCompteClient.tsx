@@ -73,7 +73,7 @@ export default function MonCompteClient({ profile, availabilities }: { profile: 
         <h2 className="font-semibold mb-3">Mes disponibilités récurrentes</h2>
         <form onSubmit={addAvailability} className="grid grid-cols-2 gap-2 mb-4">
           <select className="input" value={form.dayOfWeek} onChange={(e) => setForm({ ...form, dayOfWeek: Number(e.target.value) })}>
-            {DAY_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+            {DAY_LABELS.slice(0, 6).map((d, i) => <option key={i} value={i}>{d}</option>)}
           </select>
           <select className="input" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
             <option value="available">Disponible</option>

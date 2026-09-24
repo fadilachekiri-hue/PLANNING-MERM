@@ -72,8 +72,8 @@ export default function PostesClient({
       {week && unassigned.length > 0 && (
         <div className="card p-4 mb-4 border border-amber-200 bg-amber-50/40">
           <h3 className="font-semibold mb-3 text-amber-800">Sans poste assigné ({unassigned.length})</h3>
-          <div className="grid grid-cols-7 gap-2">
-            {DAY_LABELS.map((label, day) => {
+          <div className="grid grid-cols-6 gap-2">
+            {DAY_LABELS.slice(0, 6).map((label, day) => {
               const dayShifts = unassigned.filter((s) => s.day_of_week === day);
               return (
                 <div key={day} className="border border-amber-100 rounded-lg p-2 min-h-[60px] bg-white">
@@ -115,8 +115,8 @@ export default function PostesClient({
                 <span className="w-3 h-3 rounded" style={{ backgroundColor: machine.color_hex }} />
                 <h3 className="font-semibold">{machine.name}</h3>
               </div>
-              <div className="grid grid-cols-7 gap-2">
-                {DAY_LABELS.map((label, day) => {
+              <div className="grid grid-cols-6 gap-2">
+                {DAY_LABELS.slice(0, 6).map((label, day) => {
                   const dateIso = addDaysToIso(startDate, day);
                   const dayClosures = closures.filter((c) => c.machine_id === machine.id && c.date === dateIso);
                   const closedAllDay = dayClosures.some((c) => !c.start_time);

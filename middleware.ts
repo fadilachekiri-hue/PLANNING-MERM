@@ -16,6 +16,7 @@ const PUBLIC_PREFIXES = [
   "/assigner-postes",
   "/retirer-admins-planning",
   "/preparer-semaines-2027",
+  "/corriger-semaines-decalees",
   "/api/auth",
   "/api/setup",
   "/manifest.json",
