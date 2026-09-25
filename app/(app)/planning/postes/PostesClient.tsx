@@ -32,6 +32,7 @@ export default function PostesClient({
 
   function goTo(offsetWeeks: number) {
     router.push(`/planning/postes?semaine=${addDaysToIso(startDate, offsetWeeks * 7)}`);
+    router.refresh();
   }
 
   async function assignMachine(shiftId: string, machineId: string) {

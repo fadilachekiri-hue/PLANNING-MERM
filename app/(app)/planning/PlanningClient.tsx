@@ -43,6 +43,7 @@ export default function PlanningClient({
   function goTo(offsetWeeks: number) {
     const next = addDaysToIso(startDate, offsetWeeks * 7);
     router.push(`/planning?semaine=${next}`);
+    router.refresh();
   }
 
   async function createWeek() {
