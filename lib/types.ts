@@ -62,3 +62,12 @@ export const SHIFT_TYPE_LABELS: Record<ShiftType, string> = {
 };
 
 export const DAY_LABELS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+
+export const MORNING_SHIFT = { start: "08:00", end: "15:36" };
+export const EVENING_SHIFT = { start: "13:24", end: "21:00" };
+
+/** "Matin" ou "Soir" à partir d'une heure de début, sans exposer l'horaire exact. */
+export function shiftPeriodLabel(startTime: string | null | undefined): string {
+  if (!startTime) return "";
+  return startTime.slice(0, 5) < "12:00" ? "Matin" : "Soir";
+}

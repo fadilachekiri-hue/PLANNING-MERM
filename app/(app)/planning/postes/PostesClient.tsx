@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addDaysToIso, formatWeekLabel } from "@/lib/week";
-import { DAY_LABELS } from "@/lib/types";
+import { DAY_LABELS, shiftPeriodLabel } from "@/lib/types";
 import MachineSelect from "../MachineSelect";
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
@@ -87,7 +87,7 @@ export default function PostesClient({
                     <div key={s.id} className="mb-2">
                       <p className="text-xs">
                         {s.profiles?.first_name} {s.profiles?.last_name?.charAt(0)}.{" "}
-                        <span className="text-slate-400">{s.start_time?.slice(0, 5)}-{s.end_time?.slice(0, 5)}</span>
+                        <span className="text-slate-400">{shiftPeriodLabel(s.start_time)}</span>
                       </p>
                       {isAdmin && (
                         <MachineSelect
@@ -157,7 +157,7 @@ export default function PostesClient({
                       {!closedAllDay && dayShifts.length === 0 && <p className="text-xs text-slate-300">—</p>}
                       {!closedAllDay && dayShifts.map((s: any) => (
                         <p key={s.id} className="text-xs mb-1">
-                          {s.profiles?.first_name} {s.profiles?.last_name?.charAt(0)}. <span className="text-slate-400">{s.start_time?.slice(0, 5)}-{s.end_time?.slice(0, 5)}</span>
+                          {s.profiles?.first_name} {s.profiles?.last_name?.charAt(0)}. <span className="text-slate-400">{shiftPeriodLabel(s.start_time)}</span>
                         </p>
                       ))}
                       {shortages.length > 0 && (

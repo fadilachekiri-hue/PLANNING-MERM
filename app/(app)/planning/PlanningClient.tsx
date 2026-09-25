@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addDaysToIso, formatWeekLabel } from "@/lib/week";
 import { detectOverlaps } from "@/lib/hours";
-import { DAY_LABELS, SHIFT_TYPE_LABELS, type Shift, type ShiftType } from "@/lib/types";
+import { DAY_LABELS, SHIFT_TYPE_LABELS, MORNING_SHIFT, EVENING_SHIFT, shiftPeriodLabel, type Shift, type ShiftType } from "@/lib/types";
 import MachineSelect from "./MachineSelect";
 
 const TYPE_COLORS: Record<ShiftType, string> = {
@@ -238,7 +238,7 @@ function Chip({ shift, machine, onClick }: { shift: Shift; machine: any; onClick
         className="w-full text-left rounded-md px-2 py-1 text-xs border"
         style={{ backgroundColor: (machine?.color_hex || "#cbd5e1") + "33", borderColor: machine?.color_hex || "#cbd5e1" }}
       >
-        <span className="font-medium">{shift.start_time?.slice(0, 5)}–{shift.end_time?.slice(0, 5)}</span>
+        <span className="font-medium">{shiftPeriodLabel(shift.start_time)}</span>
         <br />
         {machine?.name || "Non affecté"}
       </button>
@@ -291,8 +291,9 @@ function ShiftEditor({
   onSaved: () => void;
 }) {
   const [shiftType, setShiftType] = useState<ShiftType>(shift?.shift_type || "work");
-  const [startTime, setStartTime] = useState(shift?.start_time?.slice(0, 5) || "08:00");
-  const [endTime, setEndTime] = useState(shift?.end_time?.slice(0, 5) || "16:00");
+  const [period, setPeriod] = useState<"matin" | "soir">(
+    shiftPeriodLabel(shift?.start_time) === "Soir" ? "soir" : "matin"
+  );
   const [machineId, setMachineId] = useState(shift?.machine_id || "");
   const [notes, setNotes] = useState(shift?.notes || "");
   const [error, setError] = useState<string | null>(null);
@@ -302,12 +303,13 @@ function ShiftEditor({
   async function save(force = false) {
     setError(null);
     setSaving(true);
+    const times = period === "matin" ? MORNING_SHIFT : EVENING_SHIFT;
     const payload = {
       weekId,
       profileId,
       dayOfWeek: day,
-      startTime: startTime || null,
-      endTime: endTime || null,
+      startTime: shiftType === "work" ? times.start : null,
+      endTime: shiftType === "work" ? times.end : null,
       shiftType,
       machineId: shiftType === "work" ? machineId || null : null,
       notes,
@@ -357,14 +359,11 @@ function ShiftEditor({
 
           {shiftType === "work" && (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="field-label">Début</label>
-                  <input type="time" className="input" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                </div>
-                <div>
-                  <label className="field-label">Fin</label>
-                  <input type="time" className="input" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              <div>
+                <label className="field-label">Horaire</label>
+                <div className="flex gap-2">
+                  <button type="button" className={period === "matin" ? "btn-primary flex-1" : "btn-secondary flex-1"} onClick={() => setPeriod("matin")}>Matin</button>
+                  <button type="button" className={period === "soir" ? "btn-primary flex-1" : "btn-secondary flex-1"} onClick={() => setPeriod("soir")}>Soir</button>
                 </div>
               </div>
               <div>
