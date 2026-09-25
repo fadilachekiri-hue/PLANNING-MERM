@@ -73,7 +73,8 @@ insert into public.machines (name, color_hex, position) values
   ('Unity', '#1e3a8a', 2),
   ('Scanner', '#16a34a', 3),
   ('Versa HD', '#ec4899', 4),
-  ('X-STRAHL', '#d6c7a1', 5);
+  ('X-STRAHL', '#d6c7a1', 5),
+  ('GQ', '#7c3aed', 6);
 
 -- Poste historique conservé pour ne pas casser les anciennes données, mais
 -- exclu des nouveaux plannings (active = false).
@@ -135,7 +136,7 @@ create table public.shifts (
   day_of_week smallint not null check (day_of_week between 0 and 6), -- 0 = lundi
   start_time time,
   end_time time,
-  shift_type text not null check (shift_type in ('work','conge','rtt','repos','absence')),
+  shift_type text not null check (shift_type in ('work','conge','rtt','repos','absence','tp','rr')),
   machine_id uuid references public.machines(id),   -- uniquement si shift_type = 'work'
   pair_id uuid,                                      -- même valeur = binôme lié sur le même créneau/poste
   notes text,

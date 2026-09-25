@@ -13,6 +13,8 @@ const TYPE_COLORS: Record<ShiftType, string> = {
   rtt: "bg-indigo-100 text-indigo-700 border border-indigo-200",
   repos: "bg-slate-100 text-slate-500 border border-slate-200",
   absence: "bg-red-100 text-red-700 border border-red-200",
+  tp: "bg-amber-100 text-amber-700 border border-amber-200",
+  rr: "bg-cyan-100 text-cyan-700 border border-cyan-200",
 };
 
 export default function PlanningClient({
@@ -260,6 +262,8 @@ function Legend({ machines }: { machines: any[] }) {
       <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-indigo-200" />RTT</span>
       <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-200" />Repos</span>
       <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-200" />Absence</span>
+      <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-200" />TP</span>
+      <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-cyan-200" />RR</span>
     </div>
   );
 }

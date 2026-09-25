@@ -2,7 +2,7 @@ export type Role = "owner" | "admin" | "member";
 export type ProfileStatus = "pending" | "active" | "disabled";
 export type ShiftPreference = "morning" | "evening" | "none";
 export type CompetencyLevel = "none" | "training" | "autonomous";
-export type ShiftType = "work" | "conge" | "rtt" | "repos" | "absence";
+export type ShiftType = "work" | "conge" | "rtt" | "repos" | "absence" | "tp" | "rr";
 export type WeekStatus = "draft" | "published";
 export type LeaveType = "conge" | "rtt" | "absence" | "indisponibilite";
 export type RequestStatus = "pending" | "approved" | "rejected";
@@ -56,6 +56,8 @@ export const SHIFT_TYPE_LABELS: Record<ShiftType, string> = {
   rtt: "RTT",
   repos: "Repos",
   absence: "Absence",
+  tp: "TP",
+  rr: "RR",
 };
 
 export const DAY_LABELS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];

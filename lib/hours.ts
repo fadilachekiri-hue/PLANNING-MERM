@@ -15,7 +15,7 @@ export function computeWorkedHours(shifts: Shift[]): number {
 }
 
 export function computeHoursByType(shifts: Shift[]) {
-  const byType: Record<string, number> = { work: 0, conge: 0, rtt: 0, repos: 0, absence: 0 };
+  const byType: Record<string, number> = { work: 0, conge: 0, rtt: 0, repos: 0, absence: 0, tp: 0, rr: 0 };
   for (const s of shifts) {
     if (s.start_time && s.end_time) {
       const h = Math.max(0, toMinutes(s.end_time) - toMinutes(s.start_time)) / 60;
