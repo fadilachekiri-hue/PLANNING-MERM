@@ -24,7 +24,18 @@ export async function POST(request: Request) {
     gloriaTrouvee: false,
     habiliteeSurGQ: false,
     errors: [] as string[],
+    // Diagnostic : liste réelle de tous les postes en base, pour vérifier
+    // que GQ y figure bien et avec quel statut (actif ou non).
+    tousLesPostes: [] as string[],
   };
+
+  async function finish() {
+    const { data: allMachines, error } = await admin.from("machines").select("name, active, position").order("position");
+    if (error) report.errors.push(`Lecture des postes : ${error.message}`);
+    report.tousLesPostes = (allMachines || []).map((m) => `${m.name} (position ${m.position}, ${m.active ? "actif" : "inactif"})`);
+    await logAction(null, "ajout_poste_gq", "machine", null, report);
+    return NextResponse.json({ ok: true, report });
+  }
 
   let { data: machine } = await admin.from("machines").select("id").eq("name", "GQ").maybeSingle();
   if (machine) {
@@ -39,7 +50,7 @@ export async function POST(request: Request) {
       .single();
     if (error || !created) {
       report.errors.push(`Création du poste GQ : ${error?.message}`);
-      return NextResponse.json({ ok: true, report });
+      return finish();
     }
     machine = created;
     report.posteCree = true;
@@ -48,7 +59,7 @@ export async function POST(request: Request) {
   const { data: gloria } = await admin.from("profiles").select("id").ilike("last_name", "Fonteneau").maybeSingle();
   if (!gloria) {
     report.errors.push("Profil de Gloria Fonteneau introuvable (recherche par nom de famille).");
-    return NextResponse.json({ ok: true, report });
+    return finish();
   }
   report.gloriaTrouvee = true;
 
@@ -58,7 +69,5 @@ export async function POST(request: Request) {
   if (compError) report.errors.push(`Habilitation : ${compError.message}`);
   else report.habiliteeSurGQ = true;
 
-  await logAction(null, "ajout_poste_gq", "machine", machine.id, report);
-
-  return NextResponse.json({ ok: true, report });
+  return finish();
 }

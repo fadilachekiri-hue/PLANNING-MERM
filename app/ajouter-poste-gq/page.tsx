@@ -8,6 +8,7 @@ type Report = {
   gloriaTrouvee: boolean;
   habiliteeSurGQ: boolean;
   errors: string[];
+  tousLesPostes: string[];
 };
 
 export default function AjouterPosteGQPage() {
@@ -56,6 +57,12 @@ export default function AjouterPosteGQPage() {
               </ul>
             </div>
           )}
+          <div className="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-4">
+            <p className="font-medium mb-1">Tous les postes en base (diagnostic) :</p>
+            <ul className="list-disc pl-4">
+              {report.tousLesPostes.map((p, i) => <li key={i}>{p}</li>)}
+            </ul>
+          </div>
           <button className="btn-primary w-full" onClick={() => (window.location.href = "/planning")}>
             Aller au planning
           </button>
