@@ -41,9 +41,11 @@ export default function PlanningClient({
   const machineById = useMemo(() => Object.fromEntries(machines.map((m) => [m.id, m])), [machines]);
 
   function goTo(offsetWeeks: number) {
+    // Navigation en rechargement complet (plutôt que la navigation interne
+    // de Next.js) : plus fiable sur certains navigateurs/PWA où le clic
+    // "Semaine suivante" restait bloqué sur la même semaine.
     const next = addDaysToIso(startDate, offsetWeeks * 7);
-    router.push(`/planning?semaine=${next}`);
-    router.refresh();
+    window.location.href = `/planning?semaine=${next}`;
   }
 
   async function createWeek() {

@@ -31,8 +31,10 @@ export default function PostesClient({
   const [assigning, setAssigning] = useState<string | null>(null);
 
   function goTo(offsetWeeks: number) {
-    router.push(`/planning/postes?semaine=${addDaysToIso(startDate, offsetWeeks * 7)}`);
-    router.refresh();
+    // Navigation en rechargement complet (plutôt que la navigation interne
+    // de Next.js) : plus fiable sur certains navigateurs/PWA où le clic
+    // "Semaine suivante" restait bloqué sur la même semaine.
+    window.location.href = `/planning/postes?semaine=${addDaysToIso(startDate, offsetWeeks * 7)}`;
   }
 
   async function assignMachine(shiftId: string, machineId: string) {
