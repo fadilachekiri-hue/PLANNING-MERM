@@ -17,6 +17,7 @@ const PUBLIC_PREFIXES = [
   "/retirer-admins-planning",
   "/preparer-semaines-2027",
   "/corriger-semaines-decalees",
+  "/ajouter-poste-gq",
   "/api/auth",
   "/api/setup",
   "/manifest.json",

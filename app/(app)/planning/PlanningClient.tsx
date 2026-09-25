@@ -6,6 +6,7 @@ import Link from "next/link";
 import { addDaysToIso, formatWeekLabel } from "@/lib/week";
 import { detectOverlaps } from "@/lib/hours";
 import { DAY_LABELS, SHIFT_TYPE_LABELS, type Shift, type ShiftType } from "@/lib/types";
+import MachineSelect from "./MachineSelect";
 
 const TYPE_COLORS: Record<ShiftType, string> = {
   work: "",
@@ -366,12 +367,7 @@ function ShiftEditor({
               </div>
               <div>
                 <label className="field-label">Poste</label>
-                <select className="input" value={machineId} onChange={(e) => setMachineId(e.target.value)}>
-                  <option value="">Non affecté</option>
-                  {machines.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
+                <MachineSelect machines={machines} value={machineId} onChange={setMachineId} placeholder="Non affecté" />
               </div>
             </>
           )}

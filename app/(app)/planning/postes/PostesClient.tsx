@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addDaysToIso, formatWeekLabel } from "@/lib/week";
 import { DAY_LABELS } from "@/lib/types";
+import MachineSelect from "../MachineSelect";
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
   return aStart < bEnd && bStart < aEnd;
@@ -89,17 +90,14 @@ export default function PostesClient({
                         <span className="text-slate-400">{s.start_time?.slice(0, 5)}-{s.end_time?.slice(0, 5)}</span>
                       </p>
                       {isAdmin && (
-                        <select
-                          className="input text-xs py-1 mt-1 print:hidden"
+                        <MachineSelect
+                          machines={machines}
+                          value=""
+                          onChange={(id) => assignMachine(s.id, id)}
+                          placeholder="Assigner un poste..."
                           disabled={assigning === s.id}
-                          defaultValue=""
-                          onChange={(e) => assignMachine(s.id, e.target.value)}
-                        >
-                          <option value="">Assigner un poste...</option>
-                          {machines.map((m) => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
-                          ))}
-                        </select>
+                          className="mt-1 print:hidden"
+                        />
                       )}
                     </div>
                   ))}
