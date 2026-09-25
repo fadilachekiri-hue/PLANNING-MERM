@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       const { data: shifts } = await admin.from("shifts").select("*").eq("week_id", week.id).eq("profile_id", profile.id);
       const dow = dayOfWeekIndex(day);
       const dayShifts = (shifts || []).filter((s) => s.day_of_week === dow);
-      const hasBlocking = dayShifts.some((s) => ["conge", "rtt", "absence", "repos", "tp", "rr"].includes(s.shift_type));
+      const hasBlocking = dayShifts.some((s) => ["conge", "rtt", "absence", "repos", "tp", "rr", "fo"].includes(s.shift_type));
       const hasConflict = dayShifts.some((s) => s.shift_type === "work" && s.start_time && s.end_time && overlaps(startTime, endTime, s.start_time, s.end_time));
       if (hasBlocking || hasConflict) continue;
       alreadyWorkedHours = computeWorkedHours(shifts || []);

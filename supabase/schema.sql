@@ -136,7 +136,7 @@ create table public.shifts (
   day_of_week smallint not null check (day_of_week between 0 and 6), -- 0 = lundi
   start_time time,
   end_time time,
-  shift_type text not null check (shift_type in ('work','conge','rtt','repos','absence','tp','rr')),
+  shift_type text not null check (shift_type in ('work','conge','rtt','repos','absence','tp','rr','fo')),
   machine_id uuid references public.machines(id),   -- uniquement si shift_type = 'work'
   pair_id uuid,                                      -- même valeur = binôme lié sur le même créneau/poste
   notes text,

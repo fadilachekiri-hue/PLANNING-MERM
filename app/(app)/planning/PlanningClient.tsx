@@ -16,6 +16,7 @@ const TYPE_COLORS: Record<ShiftType, string> = {
   absence: "bg-red-100 text-red-700 border border-red-200",
   tp: "bg-amber-100 text-amber-700 border border-amber-200",
   rr: "bg-cyan-100 text-cyan-700 border border-cyan-200",
+  fo: "bg-emerald-100 text-emerald-700 border border-emerald-200",
 };
 
 export default function PlanningClient({
@@ -265,6 +266,7 @@ function Legend({ machines }: { machines: any[] }) {
       <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-200" />Absence</span>
       <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-200" />TP</span>
       <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-cyan-200" />RR</span>
+      <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-200" />FO</span>
     </div>
   );
 }
