@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAdminOrOwner } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { mondayOf } from "@/lib/week";
+import { mondayOf, addDaysToIso } from "@/lib/week";
 import { computeWorkedHours } from "@/lib/hours";
 import { proposePairs, type Candidate } from "@/lib/pairing";
+import { isExcludedFromPlanning, isHardUnavailable, conflictingWeekMachine, pairKey } from "@/lib/team-rules";
 
 function dayOfWeekIndex(iso: string): number {
   const jsDay = new Date(iso + "T00:00:00").getDay();
@@ -24,6 +25,9 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
+  const { data: machine } = await admin.from("machines").select("id, name").eq("id", machineId).maybeSingle();
+  const machineName = machine?.name || "";
+
   const { data: rule } = await admin.from("pairing_rules").select("*").eq("machine_id", machineId).maybeSingle();
   const teamSize = rule?.team_size ?? 2;
   const minAutonomous = rule?.min_autonomous ?? 1;
@@ -37,9 +41,17 @@ export async function POST(request: Request) {
 
   // Seuls les MERM (role "member") sont proposables en binôme — jamais la
   // propriétaire ou les admins, même si une compétence leur a été attribuée par erreur.
-  const eligible = (competencies || []).filter((c: any) => c.profiles.status === "active" && c.profiles.role === "member");
+  const eligible = (competencies || []).filter(
+    (c: any) => c.profiles.status === "active" && c.profiles.role === "member" && !isExcludedFromPlanning(c.profiles.last_name)
+  );
 
+  const dow = dayOfWeekIndex(day);
   const monday = mondayOf(new Date(day + "T00:00:00"));
+  const [sh, eh] = [startTime, endTime].map((t: string) => Number(t.split(":")[0]) + Number(t.split(":")[1]) / 60);
+  const slotHours = Math.max(0, eh - sh);
+  const slotIsMorning = sh < 13;
+  const period: "matin" | "soir" = slotIsMorning ? "matin" : "soir";
+
   const { data: week } = await admin.from("weeks").select("id").eq("start_date", monday).maybeSingle();
 
   const { data: approvedLeaves } = await admin
@@ -50,38 +62,92 @@ export async function POST(request: Request) {
     .gte("date_end", day);
   const onLeave = new Set((approvedLeaves || []).map((l) => l.profile_id));
 
+  // Poste à éviter la même semaine (ex. Versa HD / Clinac) : on a besoin de son id.
+  const otherMachineName = conflictingWeekMachine(machineName);
+  let otherMachineId: string | null = null;
+  const unityMachine = await admin.from("machines").select("id, name").ilike("name", "Unity").maybeSingle();
+  const unityMachineId = unityMachine.data?.id || null;
+  if (otherMachineName) {
+    const { data: om } = await admin.from("machines").select("id").ilike("name", otherMachineName).maybeSingle();
+    otherMachineId = om?.id || null;
+  }
+
+  // Rotation : fréquence des binômes déjà formés sur ce poste au cours des 6 dernières semaines.
+  const sinceIso = addDaysToIso(monday, -42);
+  const { data: recentWeeks } = await admin.from("weeks").select("id").lt("start_date", monday).gte("start_date", sinceIso);
+  const recentWeekIds = (recentWeeks || []).map((w) => w.id);
+  const recentPairFrequency: Record<string, number> = {};
+  if (recentWeekIds.length > 0) {
+    const { data: recentShifts } = await admin
+      .from("shifts")
+      .select("profile_id, pair_id")
+      .eq("machine_id", machineId)
+      .in("week_id", recentWeekIds)
+      .not("pair_id", "is", null);
+    const byPair = new Map<string, string[]>();
+    for (const s of recentShifts || []) {
+      const arr = byPair.get(s.pair_id as string) || [];
+      arr.push(s.profile_id);
+      byPair.set(s.pair_id as string, arr);
+    }
+    for (const profileIds of byPair.values()) {
+      for (let i = 0; i < profileIds.length; i++) {
+        for (let j = i + 1; j < profileIds.length; j++) {
+          const key = pairKey(profileIds[i], profileIds[j]);
+          recentPairFrequency[key] = (recentPairFrequency[key] || 0) + 1;
+        }
+      }
+    }
+  }
+
   const candidates: Candidate[] = [];
   for (const c of eligible) {
     const profile: any = c.profiles;
     if (onLeave.has(profile.id)) continue;
+    if (isHardUnavailable(profile.last_name, dow, period)) continue;
 
     let alreadyWorkedHours = 0;
+    let conflictingMachineThisWeek = false;
+    let unityNotDoneThisWeek = true;
     if (week) {
       const { data: shifts } = await admin.from("shifts").select("*").eq("week_id", week.id).eq("profile_id", profile.id);
-      const dow = dayOfWeekIndex(day);
       const dayShifts = (shifts || []).filter((s) => s.day_of_week === dow);
       const hasBlocking = dayShifts.some((s) => ["conge", "rtt", "absence", "repos", "tp", "rr", "fo"].includes(s.shift_type));
       const hasConflict = dayShifts.some((s) => s.shift_type === "work" && s.start_time && s.end_time && overlaps(startTime, endTime, s.start_time, s.end_time));
       if (hasBlocking || hasConflict) continue;
       alreadyWorkedHours = computeWorkedHours(shifts || []);
+      if (otherMachineId) {
+        conflictingMachineThisWeek = (shifts || []).some((s) => s.machine_id === otherMachineId);
+      }
+      if (unityMachineId) {
+        unityNotDoneThisWeek = !(shifts || []).some((s) => s.machine_id === unityMachineId && s.shift_type === "work");
+      }
     }
 
     candidates.push({
       id: profile.id,
       name: `${profile.first_name} ${profile.last_name}`,
+      lastName: profile.last_name,
       level: c.level,
       shiftPreference: profile.shift_preference,
       overtimeOk: profile.overtime_ok,
       contractedHours: profile.contracted_hours,
       alreadyWorkedHours,
+      conflictingMachineThisWeek,
+      unityNotDoneThisWeek,
     });
   }
 
-  const [sh, eh] = [startTime, endTime].map((t: string) => Number(t.split(":")[0]) + Number(t.split(":")[1]) / 60);
-  const slotHours = Math.max(0, eh - sh);
-  const slotIsMorning = sh < 13;
-
-  const result = proposePairs({ candidates, teamSize, minAutonomous, allowTrainingWithSupervisor: allowTraining, slotHours, slotIsMorning });
+  const result = proposePairs({
+    candidates,
+    teamSize,
+    minAutonomous,
+    allowTrainingWithSupervisor: allowTraining,
+    slotHours,
+    slotIsMorning,
+    machineName,
+    recentPairFrequency,
+  });
 
   return NextResponse.json({ ok: true, ...result, rule: { teamSize, minAutonomous, allowTraining } });
 }

@@ -18,6 +18,7 @@ const PUBLIC_PREFIXES = [
   "/preparer-semaines-2027",
   "/corriger-semaines-decalees",
   "/ajouter-poste-gq",
+  "/former-chauliac-scanner",
   "/api/auth",
   "/api/setup",
   "/manifest.json",

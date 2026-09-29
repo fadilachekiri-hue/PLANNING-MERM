@@ -7,6 +7,7 @@ import { addDaysToIso, formatWeekLabel } from "@/lib/week";
 import { detectOverlaps } from "@/lib/hours";
 import { DAY_LABELS, SHIFT_TYPE_LABELS, MORNING_SHIFT, EVENING_SHIFT, shiftPeriodLabel, type Shift, type ShiftType } from "@/lib/types";
 import MachineSelect from "./MachineSelect";
+import { REFERENTS, isMachineAvoid, isLimitedTraining, isHardUnavailable, isInTraining, WEDNESDAY_GQ_LASTNAME, WEDNESDAY_DAY_INDEX } from "@/lib/team-rules";
 
 const TYPE_COLORS: Record<ShiftType, string> = {
   work: "",
@@ -218,6 +219,7 @@ export default function PlanningClient({
           shift={editor.shift}
           machines={machines}
           memberName={`${members.find((m) => m.id === editor.profileId)?.first_name} ${members.find((m) => m.id === editor.profileId)?.last_name}`}
+          memberLastName={members.find((m) => m.id === editor.profileId)?.last_name || ""}
           onClose={() => setEditor(null)}
           onSaved={() => {
             setEditor(null);
@@ -254,12 +256,20 @@ function Chip({ shift, machine, onClick }: { shift: Shift; machine: any; onClick
 function Legend({ machines }: { machines: any[] }) {
   return (
     <div className="flex flex-wrap gap-3 mb-4 text-xs">
-      {machines.map((m) => (
-        <span key={m.id} className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded" style={{ backgroundColor: m.color_hex }} />
-          {m.name}
-        </span>
-      ))}
+      {machines.map((m) => {
+        const referents = REFERENTS[m.name.trim().toLowerCase()];
+        return (
+          <span key={m.id} className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded" style={{ backgroundColor: m.color_hex }} />
+            {m.name}
+            {referents && (
+              <span className="text-slate-400">
+                (réf. {referents.map((r) => r.replace(/\b\w/g, (c) => c.toUpperCase())).join(", ")})
+              </span>
+            )}
+          </span>
+        );
+      })}
       <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-purple-200" />Congé</span>
       <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-indigo-200" />RTT</span>
       <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-200" />Repos</span>
@@ -278,6 +288,7 @@ function ShiftEditor({
   shift,
   machines,
   memberName,
+  memberLastName,
   onClose,
   onSaved,
 }: {
@@ -287,6 +298,7 @@ function ShiftEditor({
   shift?: Shift;
   machines: any[];
   memberName: string;
+  memberLastName: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -294,11 +306,31 @@ function ShiftEditor({
   const [period, setPeriod] = useState<"matin" | "soir">(
     shiftPeriodLabel(shift?.start_time) === "Soir" ? "soir" : "matin"
   );
-  const [machineId, setMachineId] = useState(shift?.machine_id || "");
+  const gq = machines.find((m) => m.name.trim().toLowerCase() === "gq");
+  const isFonteneauWednesday = !shift && day === WEDNESDAY_DAY_INDEX && memberLastName.trim().toLowerCase() === WEDNESDAY_GQ_LASTNAME;
+  const [machineId, setMachineId] = useState(shift?.machine_id || (isFonteneauWednesday && gq ? gq.id : ""));
   const [notes, setNotes] = useState(shift?.notes || "");
   const [error, setError] = useState<string | null>(null);
   const [conflictConfirm, setConflictConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const selectedMachine = machines.find((m) => m.id === machineId);
+  const cautions: string[] = [];
+  const trainingNote: string[] = [];
+  if (shiftType === "work") {
+    if (selectedMachine && isMachineAvoid(selectedMachine.name, memberLastName)) {
+      cautions.push(`${memberName} : poste habituellement à éviter pour cette personne (consigne de la cadre).`);
+    }
+    if (selectedMachine && isLimitedTraining(selectedMachine.name, memberLastName)) {
+      cautions.push(`${memberName} n'est pas encore suffisamment formé·e sur ce poste — à éviter seul·e ou régulièrement.`);
+    }
+    if (isHardUnavailable(memberLastName, day, period)) {
+      cautions.push(`${memberName} ne travaille normalement pas ce jour à ce moment-là.`);
+    }
+    if (selectedMachine && isInTraining(selectedMachine.name, memberLastName)) {
+      trainingNote.push(`${memberName} est en formation sur ce poste — bonne occasion de l'y positionner ponctuellement.`);
+    }
+  }
 
   async function save(force = false) {
     setError(null);
@@ -377,6 +409,13 @@ function ShiftEditor({
             <label className="field-label">Note (facultatif)</label>
             <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
+
+          {cautions.map((c, i) => (
+            <p key={i} className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{c}</p>
+          ))}
+          {trainingNote.map((c, i) => (
+            <p key={i} className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">{c}</p>
+          ))}
 
           {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
           {conflictConfirm && (
