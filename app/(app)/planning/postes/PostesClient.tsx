@@ -54,6 +54,7 @@ export default function PostesClient({
   }
 
   const unassigned = shifts.filter((s) => !s.machine_id);
+  const weekNotYetPlanned = shifts.length === 0;
 
   const scannerMachine = machines.find((m) => m.name.toLowerCase() === "scanner");
   const xstrahlMachine = machines.find((m) => m.name.toLowerCase().includes("strahl"));
@@ -73,6 +74,12 @@ export default function PostesClient({
       </div>
 
       {!week && <div className="card p-8 text-center text-slate-400">Aucun planning pour cette semaine.</div>}
+
+      {week && weekNotYetPlanned && (
+        <div className="card p-4 mb-4 border border-slate-200 bg-slate-50 text-sm text-slate-500">
+          Cette semaine n'a pas encore de créneaux programmés — aucune alerte d'effectif ne s'affiche tant qu'elle reste vide.
+        </div>
+      )}
 
       {week && unassigned.length > 0 && (
         <div className="card p-4 mb-4 border border-amber-200 bg-amber-50/40">
@@ -128,7 +135,7 @@ export default function PostesClient({
 
                   const dayShifts = shifts.filter((s) => s.machine_id === machine.id && s.day_of_week === day);
                   const rules = minStaffing.filter((r) => r.machine_id === machine.id && r.day_of_week === day);
-                  const shortages = closedAllDay || holiday
+                  const shortages = closedAllDay || holiday || weekNotYetPlanned
                     ? []
                     : rules.filter((r) => {
                         const closedNow = dayClosures.some((c) => c.start_time && overlaps(c.start_time, c.end_time, r.start_time, r.end_time));

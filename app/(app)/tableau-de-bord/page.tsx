@@ -77,7 +77,7 @@ export default async function DashboardPage() {
   function overlaps(aS: string, aE: string, bS: string, bE: string) {
     return aS < bE && bS < aE;
   }
-  const todayShortages = todayHoliday
+  const todayShortages = todayHoliday || weekShifts.length === 0
     ? []
     : (minStaffing || [])
     .filter((r) => r.day_of_week === todayDow)
