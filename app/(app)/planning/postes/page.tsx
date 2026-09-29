@@ -23,9 +23,17 @@ export default async function PostesPage({ searchParams }: { searchParams: { sem
     .lte("date", addDaysToIso(startDate, 6));
 
   let shifts: any[] = [];
+  let members: any[] = [];
+  let allShifts: any[] = [];
   if (week) {
-    const { data } = await supabase.from("shifts").select("*, profiles(first_name, last_name)").eq("week_id", week.id).eq("shift_type", "work");
-    shifts = data || [];
+    const [{ data: sh }, { data: wm }, { data: allSh }] = await Promise.all([
+      supabase.from("shifts").select("*, profiles(first_name, last_name)").eq("week_id", week.id).eq("shift_type", "work"),
+      supabase.from("week_members").select("profile_id, profiles(id, first_name, last_name)").eq("week_id", week.id),
+      supabase.from("shifts").select("profile_id, day_of_week").eq("week_id", week.id),
+    ]);
+    shifts = sh || [];
+    members = (wm || []).map((w: any) => w.profiles).filter(Boolean).sort((a: any, b: any) => a.last_name.localeCompare(b.last_name));
+    allShifts = allSh || [];
   }
 
   return (
@@ -35,6 +43,8 @@ export default async function PostesPage({ searchParams }: { searchParams: { sem
       week={week}
       machines={machines || []}
       shifts={shifts}
+      members={members}
+      allShifts={allShifts}
       minStaffing={minStaffing || []}
       closures={closures || []}
     />

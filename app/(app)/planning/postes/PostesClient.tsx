@@ -18,6 +18,8 @@ export default function PostesClient({
   week,
   machines,
   shifts,
+  members,
+  allShifts,
   minStaffing,
   closures,
 }: {
@@ -26,6 +28,8 @@ export default function PostesClient({
   week: any;
   machines: any[];
   shifts: any[];
+  members: any[];
+  allShifts: any[];
   minStaffing: any[];
   closures: any[];
 }) {
@@ -55,6 +59,7 @@ export default function PostesClient({
 
   const unassigned = shifts.filter((s) => !s.machine_id);
   const weekNotYetPlanned = shifts.length === 0;
+  const scheduledKeys = new Set(allShifts.map((s: any) => `${s.profile_id}_${s.day_of_week}`));
 
   const scannerMachine = machines.find((m) => m.name.toLowerCase() === "scanner");
   const xstrahlMachine = machines.find((m) => m.name.toLowerCase().includes("strahl"));
@@ -78,6 +83,26 @@ export default function PostesClient({
       {week && weekNotYetPlanned && (
         <div className="card p-4 mb-4 border border-slate-200 bg-slate-50 text-sm text-slate-500">
           Cette semaine n'a pas encore de créneaux programmés — aucune alerte d'effectif ne s'affiche tant qu'elle reste vide.
+        </div>
+      )}
+
+      {week && members.length > 0 && (
+        <div className="card p-4 mb-4 border border-slate-200">
+          <h3 className="font-semibold mb-3">Sans créneau programmé</h3>
+          <div className="grid grid-cols-6 gap-2">
+            {DAY_LABELS.slice(0, 6).map((label, day) => {
+              const notScheduled = members.filter((m) => !scheduledKeys.has(`${m.id}_${day}`));
+              return (
+                <div key={day} className="border border-slate-100 rounded-lg p-2 min-h-[60px] bg-white">
+                  <p className="text-xs font-medium text-slate-500 mb-1">{label} <span className="font-normal text-slate-400">{formatDayShort(addDaysToIso(startDate, day))}</span></p>
+                  {notScheduled.length === 0 && <p className="text-xs text-slate-300">—</p>}
+                  {notScheduled.map((m: any) => (
+                    <p key={m.id} className="text-xs">{m.first_name} {m.last_name}</p>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
