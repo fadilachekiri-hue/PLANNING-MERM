@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addDaysToIso, formatWeekLabel, formatDayShort } from "@/lib/week";
+import { holidayName } from "@/lib/holidays";
 import { detectOverlaps } from "@/lib/hours";
 import { DAY_LABELS, SHIFT_TYPE_LABELS, MORNING_SHIFT, EVENING_SHIFT, shiftPeriodLabel, type Shift, type ShiftType } from "@/lib/types";
 import MachineSelect from "./MachineSelect";
@@ -143,12 +144,17 @@ export default function PlanningClient({
             <thead>
               <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
                 <th className="text-left px-3 py-3 sticky left-0 bg-slate-50 min-w-[180px]">Nom</th>
-                {DAY_LABELS.slice(0, 6).map((d, i) => (
-                  <th key={i} className="text-left px-2 py-3 min-w-[150px]">
-                    {d}
-                    <span className="block font-normal normal-case text-slate-400">{formatDayShort(addDaysToIso(startDate, i))}</span>
-                  </th>
-                ))}
+                {DAY_LABELS.slice(0, 6).map((d, i) => {
+                  const dateIso = addDaysToIso(startDate, i);
+                  const holiday = holidayName(dateIso);
+                  return (
+                    <th key={i} className="text-left px-2 py-3 min-w-[150px]">
+                      {d}
+                      <span className="block font-normal normal-case text-slate-400">{formatDayShort(dateIso)}</span>
+                      {holiday && <span className="block font-normal normal-case text-amber-600">🎌 {holiday}</span>}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -223,6 +229,7 @@ export default function PlanningClient({
           machines={machines}
           memberName={`${members.find((m) => m.id === editor.profileId)?.first_name} ${members.find((m) => m.id === editor.profileId)?.last_name}`}
           memberLastName={members.find((m) => m.id === editor.profileId)?.last_name || ""}
+          dateIso={addDaysToIso(startDate, editor.day)}
           onClose={() => setEditor(null)}
           onSaved={() => {
             setEditor(null);
@@ -292,6 +299,7 @@ function ShiftEditor({
   machines,
   memberName,
   memberLastName,
+  dateIso,
   onClose,
   onSaved,
 }: {
@@ -302,6 +310,7 @@ function ShiftEditor({
   machines: any[];
   memberName: string;
   memberLastName: string;
+  dateIso: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -318,8 +327,12 @@ function ShiftEditor({
   const [saving, setSaving] = useState(false);
 
   const selectedMachine = machines.find((m) => m.id === machineId);
+  const holiday = holidayName(dateIso);
   const cautions: string[] = [];
   const trainingNote: string[] = [];
+  if (holiday && shiftType === "work") {
+    cautions.push(`${holiday} — jour férié, normalement fermé. Le créneau sera quand même enregistré si nécessaire.`);
+  }
   if (shiftType === "work") {
     if (selectedMachine && isMachineAvoid(selectedMachine.name, memberLastName)) {
       cautions.push(`${memberName} : poste habituellement à éviter pour cette personne (consigne de la cadre).`);

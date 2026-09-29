@@ -3,6 +3,7 @@ import { getCurrentProfile, isAdminOrOwner } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { mondayOf } from "@/lib/week";
 import { DAY_LABELS, shiftPeriodLabel } from "@/lib/types";
+import { holidayName } from "@/lib/holidays";
 
 function todayDowIndex(): number {
   const jsDay = new Date().getDay();
@@ -18,6 +19,7 @@ export default async function DashboardPage() {
   const todayDow = todayDowIndex();
 
   const { data: week } = await supabase.from("weeks").select("*").eq("start_date", monday).maybeSingle();
+  const todayHoliday = holidayName(new Date().toISOString().slice(0, 10));
 
   if (!admin) {
     let myShifts: any[] = [];
@@ -31,6 +33,11 @@ export default async function DashboardPage() {
     return (
       <div className="space-y-6">
         <h1 className="text-xl font-semibold">Bonjour {profile.first_name} 👋</h1>
+        {todayHoliday && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            🎌 {todayHoliday} — jour férié.
+          </p>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Stat label="Demandes en attente" value={String(pendingRequests?.length || 0)} />
           <Stat label="Notifications non lues" value={String(unread?.length || 0)} />
@@ -70,7 +77,9 @@ export default async function DashboardPage() {
   function overlaps(aS: string, aE: string, bS: string, bE: string) {
     return aS < bE && bS < aE;
   }
-  const todayShortages = (minStaffing || [])
+  const todayShortages = todayHoliday
+    ? []
+    : (minStaffing || [])
     .filter((r) => r.day_of_week === todayDow)
     .filter((r) => {
       const closed = (todayClosures || []).some(
@@ -84,6 +93,11 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Tableau de bord</h1>
+      {todayHoliday && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          🎌 {todayHoliday} — jour férié, normalement fermé.
+        </p>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Stat label="Personnel actif" value={String(activeCount || 0)} />
         <Stat label="Présents aujourd'hui" value={String(todayPresent.length)} />

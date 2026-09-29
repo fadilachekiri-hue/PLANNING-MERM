@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addDaysToIso, formatWeekLabel, formatDayShort } from "@/lib/week";
 import { DAY_LABELS, shiftPeriodLabel } from "@/lib/types";
+import { holidayName } from "@/lib/holidays";
 import MachineSelect from "../MachineSelect";
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
@@ -79,9 +80,11 @@ export default function PostesClient({
           <div className="grid grid-cols-6 gap-2">
             {DAY_LABELS.slice(0, 6).map((label, day) => {
               const dayShifts = unassigned.filter((s) => s.day_of_week === day);
+              const holiday = holidayName(addDaysToIso(startDate, day));
               return (
                 <div key={day} className="border border-amber-100 rounded-lg p-2 min-h-[60px] bg-white">
                   <p className="text-xs font-medium text-slate-500 mb-1">{label} <span className="font-normal text-slate-400">{formatDayShort(addDaysToIso(startDate, day))}</span></p>
+                  {holiday && <p className="text-xs text-amber-700">🎌 {holiday}</p>}
                   {dayShifts.length === 0 && <p className="text-xs text-slate-300">—</p>}
                   {dayShifts.map((s: any) => (
                     <div key={s.id} className="mb-2">
@@ -119,12 +122,13 @@ export default function PostesClient({
               <div className="grid grid-cols-6 gap-2">
                 {DAY_LABELS.slice(0, 6).map((label, day) => {
                   const dateIso = addDaysToIso(startDate, day);
+                  const holiday = holidayName(dateIso);
                   const dayClosures = closures.filter((c) => c.machine_id === machine.id && c.date === dateIso);
                   const closedAllDay = dayClosures.some((c) => !c.start_time);
 
                   const dayShifts = shifts.filter((s) => s.machine_id === machine.id && s.day_of_week === day);
                   const rules = minStaffing.filter((r) => r.machine_id === machine.id && r.day_of_week === day);
-                  const shortages = closedAllDay
+                  const shortages = closedAllDay || holiday
                     ? []
                     : rules.filter((r) => {
                         const closedNow = dayClosures.some((c) => c.start_time && overlaps(c.start_time, c.end_time, r.start_time, r.end_time));
@@ -143,8 +147,9 @@ export default function PostesClient({
                     });
 
                   return (
-                    <div key={day} className={`border rounded-lg p-2 min-h-[90px] ${closedAllDay ? "border-slate-200 bg-slate-50" : "border-slate-100"}`}>
+                    <div key={day} className={`border rounded-lg p-2 min-h-[90px] ${closedAllDay ? "border-slate-200 bg-slate-50" : holiday ? "border-amber-200 bg-amber-50/40" : "border-slate-100"}`}>
                       <p className="text-xs font-medium text-slate-500 mb-1">{label} <span className="font-normal text-slate-400">{formatDayShort(dateIso)}</span></p>
+                      {holiday && <p className="text-xs text-amber-700 font-medium">🎌 {holiday} — fermé, sauf programmation exceptionnelle</p>}
                       {closedAllDay && (
                         <p className="text-xs text-slate-500 font-medium">🔧 Fermé{dayClosures[0]?.reason ? ` — ${dayClosures[0].reason}` : ""}</p>
                       )}
