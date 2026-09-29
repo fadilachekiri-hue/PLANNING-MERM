@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { addDaysToIso, formatWeekLabel } from "@/lib/week";
+import { addDaysToIso, formatWeekLabel, formatDayShort } from "@/lib/week";
 import { detectOverlaps } from "@/lib/hours";
 import { DAY_LABELS, SHIFT_TYPE_LABELS, MORNING_SHIFT, EVENING_SHIFT, shiftPeriodLabel, type Shift, type ShiftType } from "@/lib/types";
 import MachineSelect from "./MachineSelect";
@@ -144,7 +144,10 @@ export default function PlanningClient({
               <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
                 <th className="text-left px-3 py-3 sticky left-0 bg-slate-50 min-w-[180px]">Nom</th>
                 {DAY_LABELS.slice(0, 6).map((d, i) => (
-                  <th key={i} className="text-left px-2 py-3 min-w-[150px]">{d}</th>
+                  <th key={i} className="text-left px-2 py-3 min-w-[150px]">
+                    {d}
+                    <span className="block font-normal normal-case text-slate-400">{formatDayShort(addDaysToIso(startDate, i))}</span>
+                  </th>
                 ))}
               </tr>
             </thead>

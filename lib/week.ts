@@ -25,6 +25,12 @@ export function addDaysToIso(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Date courte (ex. "25/09") pour l'affichage sous un jour de la semaine. */
+export function formatDayShort(iso: string): string {
+  const [, m, d] = iso.split("-");
+  return `${d}/${m}`;
+}
+
 export function formatWeekLabel(startIso: string): string {
   const start = parseIso(startIso);
   const end = parseIso(addDaysToIso(startIso, 6));

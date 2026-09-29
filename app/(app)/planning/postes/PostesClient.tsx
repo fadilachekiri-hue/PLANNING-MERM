@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { addDaysToIso, formatWeekLabel } from "@/lib/week";
+import { addDaysToIso, formatWeekLabel, formatDayShort } from "@/lib/week";
 import { DAY_LABELS, shiftPeriodLabel } from "@/lib/types";
 import MachineSelect from "../MachineSelect";
 
@@ -81,7 +81,7 @@ export default function PostesClient({
               const dayShifts = unassigned.filter((s) => s.day_of_week === day);
               return (
                 <div key={day} className="border border-amber-100 rounded-lg p-2 min-h-[60px] bg-white">
-                  <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
+                  <p className="text-xs font-medium text-slate-500 mb-1">{label} <span className="font-normal text-slate-400">{formatDayShort(addDaysToIso(startDate, day))}</span></p>
                   {dayShifts.length === 0 && <p className="text-xs text-slate-300">—</p>}
                   {dayShifts.map((s: any) => (
                     <div key={s.id} className="mb-2">
@@ -144,7 +144,7 @@ export default function PostesClient({
 
                   return (
                     <div key={day} className={`border rounded-lg p-2 min-h-[90px] ${closedAllDay ? "border-slate-200 bg-slate-50" : "border-slate-100"}`}>
-                      <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
+                      <p className="text-xs font-medium text-slate-500 mb-1">{label} <span className="font-normal text-slate-400">{formatDayShort(dateIso)}</span></p>
                       {closedAllDay && (
                         <p className="text-xs text-slate-500 font-medium">🔧 Fermé{dayClosures[0]?.reason ? ` — ${dayClosures[0].reason}` : ""}</p>
                       )}
