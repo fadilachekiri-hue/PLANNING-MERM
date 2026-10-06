@@ -178,6 +178,16 @@ export async function POST(_request: Request, { params }: { params: { id: string
     }
 
     await logAction(actor.id, "reparation_postes_toutes_semaines", "week", null, report);
+
+    // Vérification : relit en base les créneaux de la semaine demandée juste
+    // après l'écriture, pour voir si les machine_id sont réellement persistés.
+    const { data: verif } = await admin
+      .from("shifts")
+      .select("id, day_of_week, machine_id, shift_type")
+      .eq("week_id", params.id)
+      .eq("shift_type", "work");
+    const toUpdateForThisWeek = toUpdate.filter((u) => (existingShifts || []).some((s: any) => s.id === u.id && s.week_id === params.id));
+
     console.log("[reparer-postes] diagnostic", JSON.stringify({
       weekIdRequested: params.id,
       machinesCount: (machines || []).length,
@@ -188,6 +198,8 @@ export async function POST(_request: Request, { params }: { params: { id: string
       existingShiftsCount: (existingShifts || []).length,
       toInsertCount: toInsert.length,
       toUpdateCount: toUpdate.length,
+      toUpdateForThisWeekCount: toUpdateForThisWeek.length,
+      verifShiftsForThisWeek: (verif || []).map((s: any) => ({ day: s.day_of_week, machine_id: s.machine_id })),
       postesAssignes: report.postesAssignes,
       introuvablesCount: report.introuvables.length,
       introuvablesSample: report.introuvables.slice(0, 10),
