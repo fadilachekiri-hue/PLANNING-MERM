@@ -35,20 +35,26 @@ export default function PostesClient({
   const [assigning, setAssigning] = useState<string | null>(null);
   const [repairing, setRepairing] = useState(false);
   const [repairReport, setRepairReport] = useState<{ postesAssignes: number; semainesTraitees: number; introuvables: string[]; avertissement?: string } | null>(null);
+  const [repairError, setRepairError] = useState<string | null>(null);
 
   async function repairPostes() {
     if (!week) return;
     setRepairing(true);
     setRepairReport(null);
+    setRepairError(null);
     try {
       const res = await fetch(`/api/planning/semaines/${week.id}/reparer-postes`, { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
         setRepairReport(data.report ? { ...data.report, avertissement: data.avertissement } : null);
         // Laisse le rapport s'afficher un instant avant le rechargement complet
         // (plus fiable que router.refresh() pour montrer les postes à jour).
         setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setRepairError(data?.error || `Erreur serveur (${res.status}).`);
       }
+    } catch (e: any) {
+      setRepairError(e?.message || "Échec de connexion au serveur.");
     } finally {
       setRepairing(false);
     }
@@ -108,6 +114,9 @@ export default function PostesClient({
               </button>
             )}
           </div>
+          {repairError && (
+            <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">⚠ {repairError}</p>
+          )}
           {repairReport && (
             <div className="mt-2 text-xs">
               {repairReport.avertissement && <p className="text-slate-500">{repairReport.avertissement}</p>}
