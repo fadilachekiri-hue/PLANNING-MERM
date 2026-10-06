@@ -34,7 +34,7 @@ export default function PostesClient({
 }) {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [repairing, setRepairing] = useState(false);
-  const [repairReport, setRepairReport] = useState<{ postesAssignes: number; introuvables: string[]; avertissement?: string } | null>(null);
+  const [repairReport, setRepairReport] = useState<{ postesAssignes: number; semainesTraitees: number; introuvables: string[]; avertissement?: string } | null>(null);
 
   async function repairPostes() {
     if (!week) return;
@@ -104,14 +104,14 @@ export default function PostesClient({
             <span>Cette semaine n'a pas encore de créneaux programmés — aucune alerte d'effectif ne s'affiche tant qu'elle reste vide.</span>
             {isAdmin && (
               <button className="btn-secondary text-xs shrink-0" onClick={repairPostes} disabled={repairing}>
-                {repairing ? "Réparation..." : "Réparer les postes (sept.-oct. 2026)"}
+                {repairing ? "Réparation..." : "Réparer les postes (toutes les semaines sept.-oct. 2026)"}
               </button>
             )}
           </div>
           {repairReport && (
             <div className="mt-2 text-xs">
               {repairReport.avertissement && <p className="text-slate-500">{repairReport.avertissement}</p>}
-              <p className="text-slate-600">{repairReport.postesAssignes} poste(s) réparé(s).</p>
+              <p className="text-slate-600">{repairReport.postesAssignes} poste(s) réparé(s) sur {repairReport.semainesTraitees} semaine(s) — rechargement...</p>
               {repairReport.introuvables.length > 0 && (
                 <ul className="list-disc pl-4 text-amber-700 mt-1">
                   {repairReport.introuvables.map((e, i) => <li key={i}>{e}</li>)}

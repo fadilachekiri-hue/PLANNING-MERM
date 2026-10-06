@@ -27,25 +27,18 @@ const FALLBACK_LAST_NAME: Record<string, string> = {
   "TEIXEIRA": "Teixeira",
 };
 
-// Répare, pour UNE semaine précise, les postes septembre-octobre 2026 déduits
-// du fichier Excel : recrée tout créneau de travail manquant et réaffecte le
-// bon poste (machine_id). Accessible depuis l'appli (session admin), sans
-// code d'installation — contrairement à /api/setup/assigner-postes qui
-// retraite tout l'historique.
+// Répare TOUTES les semaines de septembre-octobre 2026 (pas seulement celle
+// affichée) : recrée tout créneau de travail manquant et réaffecte le bon
+// poste (machine_id), d'après les données déduites du fichier Excel.
+// Accessible depuis l'appli (session admin), sans code d'installation —
+// contrairement à /api/setup/assigner-postes qui retraite aussi novembre-
+// décembre. Le paramètre [id] n'est conservé que pour le contexte du log.
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   const actor = await requireAdminOrOwner();
   if (!actor) return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
 
   const admin = createAdminClient();
-  const { data: week } = await admin.from("weeks").select("id, start_date").eq("id", params.id).maybeSingle();
-  if (!week) return NextResponse.json({ error: "Semaine introuvable." }, { status: 404 });
-
-  const entries = SEPT_OCT_MACHINES.filter((a) => a.weekStart === week.start_date);
-  const report = { postesAssignes: 0, introuvables: [] as string[] };
-
-  if (entries.length === 0) {
-    return NextResponse.json({ ok: true, report, avertissement: "Aucune donnée de poste septembre-octobre pour cette semaine." });
-  }
+  const report = { postesAssignes: 0, semainesTraitees: 0, introuvables: [] as string[] };
 
   const { data: machines } = await admin.from("machines").select("id, name").eq("active", true);
   const machineIdByName = new Map((machines || []).map((m) => [m.name, m.id]));
@@ -59,22 +52,35 @@ export async function POST(_request: Request, { params }: { params: { id: string
     return data?.id || null;
   }
 
-  for (const a of entries) {
+  const weekIdCache = new Map<string, string | null>();
+  async function weekId(weekStart: string): Promise<string | null> {
+    if (weekIdCache.has(weekStart)) return weekIdCache.get(weekStart)!;
+    const { data } = await admin.from("weeks").select("id").eq("start_date", weekStart).maybeSingle();
+    weekIdCache.set(weekStart, data?.id || null);
+    return data?.id || null;
+  }
+
+  for (const a of SEPT_OCT_MACHINES) {
     const pid = await profileId(a.lastName);
+    const wid = await weekId(a.weekStart);
     const machineId = machineIdByName.get(a.machine);
     if (!pid) {
-      report.introuvables.push(`${a.lastName} j${a.dayOfWeek} : profil introuvable`);
+      report.introuvables.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : profil introuvable`);
+      continue;
+    }
+    if (!wid) {
+      report.introuvables.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : semaine introuvable`);
       continue;
     }
     if (!machineId) {
-      report.introuvables.push(`${a.lastName} j${a.dayOfWeek} : poste "${a.machine}" introuvable`);
+      report.introuvables.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : poste "${a.machine}" introuvable`);
       continue;
     }
 
     const { data: shift } = await admin
       .from("shifts")
       .select("id, notes")
-      .eq("week_id", week.id)
+      .eq("week_id", wid)
       .eq("profile_id", pid)
       .eq("day_of_week", a.dayOfWeek)
       .eq("shift_type", "work")
@@ -85,13 +91,13 @@ export async function POST(_request: Request, { params }: { params: { id: string
         (s) => s.lastName === a.lastName && s.weekStart === a.weekStart && s.dayOfWeek === a.dayOfWeek && s.shiftType === "work"
       );
       if (!source) {
-        report.introuvables.push(`${a.lastName} j${a.dayOfWeek} : créneau de travail introuvable dans les données d'import`);
+        report.introuvables.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : créneau de travail introuvable dans les données d'import`);
         continue;
       }
       const notes = a.machine === "Scanner" ? "Couvre aussi X-STRAHL 13h-14h" : source.notes;
-      await admin.from("week_members").upsert({ week_id: week.id, profile_id: pid }, { onConflict: "week_id,profile_id" });
+      await admin.from("week_members").upsert({ week_id: wid, profile_id: pid }, { onConflict: "week_id,profile_id" });
       const { error } = await admin.from("shifts").insert({
-        week_id: week.id,
+        week_id: wid,
         profile_id: pid,
         day_of_week: a.dayOfWeek,
         start_time: source.startTime,
@@ -101,7 +107,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
         notes,
       });
       if (error) {
-        report.introuvables.push(`${a.lastName} j${a.dayOfWeek} : échec de recréation (${error.message})`);
+        report.introuvables.push(`${a.lastName} ${a.weekStart} j${a.dayOfWeek} : échec de recréation (${error.message})`);
         continue;
       }
       report.postesAssignes++;
@@ -113,6 +119,8 @@ export async function POST(_request: Request, { params }: { params: { id: string
     report.postesAssignes++;
   }
 
-  await logAction(actor.id, "reparation_postes_semaine", "week", week.id, report);
+  report.semainesTraitees = weekIdCache.size;
+
+  await logAction(actor.id, "reparation_postes_toutes_semaines", "week", null, report);
   return NextResponse.json({ ok: true, report });
 }
