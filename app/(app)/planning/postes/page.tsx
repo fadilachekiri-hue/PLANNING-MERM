@@ -28,7 +28,7 @@ export default async function PostesPage({ searchParams }: { searchParams: { sem
   if (week) {
     const [{ data: sh }, { data: wm }, { data: allSh }] = await Promise.all([
       supabase.from("shifts").select("*, profiles!shifts_profile_id_fkey(first_name, last_name)").eq("week_id", week.id).eq("shift_type", "work"),
-      supabase.from("week_members").select("profile_id, profiles(id, first_name, last_name)").eq("week_id", week.id),
+      supabase.from("week_members").select("profile_id, profiles(id, first_name, last_name, job_title)").eq("week_id", week.id),
       supabase.from("shifts").select("profile_id, day_of_week").eq("week_id", week.id),
     ]);
     shifts = sh || [];

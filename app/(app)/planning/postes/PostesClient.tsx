@@ -85,6 +85,13 @@ export default function PostesClient({
   const weekNotYetPlanned = shifts.length === 0;
   const scheduledKeys = new Set(allShifts.map((s: any) => `${s.profile_id}_${s.day_of_week}`));
 
+  // Membres hors MERM (ex. responsable planification des patients) : pas
+  // assignés à un poste/machine, affichés à part en bas plutôt que mélangés
+  // aux MERM ou comptés dans les alertes d'effectif. Identifiés par leur
+  // fonction ("Équipe") différente de "MERM".
+  const merms = members.filter((m: any) => !m.job_title || m.job_title.trim().toUpperCase() === "MERM");
+  const otherStaff = members.filter((m: any) => m.job_title && m.job_title.trim().toUpperCase() !== "MERM");
+
   const scannerMachine = machines.find((m) => m.name.toLowerCase() === "scanner");
   const xstrahlMachine = machines.find((m) => m.name.toLowerCase().includes("strahl"));
 
@@ -134,12 +141,12 @@ export default function PostesClient({
         </div>
       )}
 
-      {week && members.length > 0 && (
+      {week && merms.length > 0 && (
         <div className="card p-4 mb-4 border border-slate-200">
           <h3 className="font-semibold mb-3">Sans créneau programmé</h3>
           <div className="grid grid-cols-5 gap-2">
             {DAY_LABELS.slice(0, 5).map((label, day) => {
-              const notScheduled = members.filter((m) => !scheduledKeys.has(`${m.id}_${day}`));
+              const notScheduled = merms.filter((m) => !scheduledKeys.has(`${m.id}_${day}`));
               return (
                 <div key={day} className="border border-slate-100 rounded-lg p-2 min-h-[60px] bg-white">
                   <p className="text-xs font-medium text-slate-500 mb-1">{label} <span className="font-normal text-slate-400">{formatDayShort(addDaysToIso(startDate, day))}</span></p>
@@ -257,6 +264,28 @@ export default function PostesClient({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {week && otherStaff.length > 0 && (
+        <div className="card p-4 mt-4">
+          <h3 className="font-semibold mb-3">Équipe hors postes</h3>
+          <div className="space-y-2">
+            {otherStaff.map((m: any) => {
+              const daysPresent = DAY_LABELS.slice(0, 5)
+                .map((label, day) => (scheduledKeys.has(`${m.id}_${day}`) ? label : null))
+                .filter(Boolean);
+              return (
+                <div key={m.id} className="flex items-center gap-2 text-sm border border-slate-100 rounded-lg p-2">
+                  <span className="font-medium">{m.first_name} {m.last_name}</span>
+                  <span className="text-slate-400">— {m.job_title}</span>
+                  {daysPresent.length > 0 && (
+                    <span className="text-slate-400 text-xs ml-auto">{daysPresent.join(", ")}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
