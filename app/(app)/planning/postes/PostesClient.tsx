@@ -35,6 +35,24 @@ export default function PostesClient({
 }) {
   const router = useRouter();
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [repairing, setRepairing] = useState(false);
+  const [repairReport, setRepairReport] = useState<{ postesAssignes: number; introuvables: string[]; avertissement?: string } | null>(null);
+
+  async function repairPostes() {
+    if (!week) return;
+    setRepairing(true);
+    setRepairReport(null);
+    try {
+      const res = await fetch(`/api/planning/semaines/${week.id}/reparer-postes`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setRepairReport(data.report ? { ...data.report, avertissement: data.avertissement } : null);
+        router.refresh();
+      }
+    } finally {
+      setRepairing(false);
+    }
+  }
 
   function goTo(offsetWeeks: number) {
     // Navigation en rechargement complet (plutôt que la navigation interne
@@ -82,7 +100,25 @@ export default function PostesClient({
 
       {week && weekNotYetPlanned && (
         <div className="card p-4 mb-4 border border-slate-200 bg-slate-50 text-sm text-slate-500">
-          Cette semaine n'a pas encore de créneaux programmés — aucune alerte d'effectif ne s'affiche tant qu'elle reste vide.
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span>Cette semaine n'a pas encore de créneaux programmés — aucune alerte d'effectif ne s'affiche tant qu'elle reste vide.</span>
+            {isAdmin && (
+              <button className="btn-secondary text-xs shrink-0" onClick={repairPostes} disabled={repairing}>
+                {repairing ? "Réparation..." : "Réparer les postes (sept.-oct. 2026)"}
+              </button>
+            )}
+          </div>
+          {repairReport && (
+            <div className="mt-2 text-xs">
+              {repairReport.avertissement && <p className="text-slate-500">{repairReport.avertissement}</p>}
+              <p className="text-slate-600">{repairReport.postesAssignes} poste(s) réparé(s).</p>
+              {repairReport.introuvables.length > 0 && (
+                <ul className="list-disc pl-4 text-amber-700 mt-1">
+                  {repairReport.introuvables.map((e, i) => <li key={i}>{e}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       )}
 
