@@ -3,6 +3,15 @@ import { getCurrentProfile } from "@/lib/session";
 import Sidebar from "./Sidebar";
 import ShareButton from "./ShareButton";
 
+// Sans ceci, Next.js met en cache indéfiniment les requêtes Supabase faites
+// depuis les Server Components (comportement par défaut de Next 14, même sur
+// une route rendue dynamiquement à cause de cookies()) : les écritures
+// (créneaux, postes...) réussissaient bien en base, mais les pages
+// continuaient à afficher une version figée tant que ce cache n'était pas
+// explicitement invalidé. force-dynamic force une lecture fraîche à chaque
+// requête pour toutes les pages de l'application.
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/connexion");
