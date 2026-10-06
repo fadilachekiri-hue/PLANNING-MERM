@@ -116,7 +116,7 @@ export default function PlanningClient({
         </div>
         <div className="flex gap-2 print:hidden">
           <button className="btn-secondary" onClick={() => window.print()}>Imprimer / PDF</button>
-          <Link href="/planning/postes" className="btn-secondary">Vue par postes</Link>
+          <Link href="/planning/postes" className="btn-secondary">Planning</Link>
           {isAdmin && !week && (
             <button className="btn-primary" onClick={createWeek} disabled={creating}>
               {creating ? "Création..." : "Créer cette semaine"}
@@ -144,7 +144,7 @@ export default function PlanningClient({
             <thead>
               <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
                 <th className="text-left px-3 py-3 sticky left-0 bg-slate-50 min-w-[180px]">Nom</th>
-                {DAY_LABELS.slice(0, 6).map((d, i) => {
+                {DAY_LABELS.slice(0, 5).map((d, i) => {
                   const dateIso = addDaysToIso(startDate, i);
                   const holiday = holidayName(dateIso);
                   return (
@@ -172,7 +172,7 @@ export default function PlanningClient({
                         </button>
                       )}
                     </td>
-                    {[0, 1, 2, 3, 4, 5].map((day) => {
+                    {[0, 1, 2, 3, 4].map((day) => {
                       const dayShifts = memberShifts.filter((s) => s.day_of_week === day);
                       return (
                         <td key={day} className="px-2 py-2">
@@ -197,7 +197,7 @@ export default function PlanningClient({
               })}
               {members.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-slate-400">Personne n'est encore inclus dans cette semaine.</td>
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">Personne n'est encore inclus dans cette semaine.</td>
                 </tr>
               )}
             </tbody>

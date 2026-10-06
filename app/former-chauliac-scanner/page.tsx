@@ -56,7 +56,7 @@ export default function FormerChauliacScannerPage() {
               </ul>
             </div>
           )}
-          <button className="btn-primary w-full" onClick={() => (window.location.href = "/planning")}>
+          <button className="btn-primary w-full" onClick={() => (window.location.href = "/planning/postes")}>
             Aller au planning
           </button>
         </div>

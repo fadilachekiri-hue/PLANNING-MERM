@@ -51,7 +51,7 @@ export default async function DashboardPage() {
               {s.shift_type === "work" ? `${shiftPeriodLabel(s.start_time)} — ${s.machines?.name || "Non affecté"}` : s.shift_type}
             </p>
           ))}
-          <Link href="/planning" className="text-sm text-brand-600 hover:underline mt-3 inline-block">Voir tout le planning →</Link>
+          <Link href="/planning/postes" className="text-sm text-brand-600 hover:underline mt-3 inline-block">Voir tout le planning →</Link>
         </div>
       </div>
     );

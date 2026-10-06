@@ -74,7 +74,7 @@ export default function PostesClient({
         </div>
         <div className="flex gap-2 print:hidden">
           <button className="btn-secondary" onClick={() => window.print()}>Imprimer / PDF</button>
-          <Link href="/planning" className="btn-secondary">Vue Personnel</Link>
+          <Link href="/planning" className="btn-secondary">Vue par MERM</Link>
         </div>
       </div>
 
@@ -89,8 +89,8 @@ export default function PostesClient({
       {week && members.length > 0 && (
         <div className="card p-4 mb-4 border border-slate-200">
           <h3 className="font-semibold mb-3">Sans créneau programmé</h3>
-          <div className="grid grid-cols-6 gap-2">
-            {DAY_LABELS.slice(0, 6).map((label, day) => {
+          <div className="grid grid-cols-5 gap-2">
+            {DAY_LABELS.slice(0, 5).map((label, day) => {
               const notScheduled = members.filter((m) => !scheduledKeys.has(`${m.id}_${day}`));
               return (
                 <div key={day} className="border border-slate-100 rounded-lg p-2 min-h-[60px] bg-white">
@@ -109,8 +109,8 @@ export default function PostesClient({
       {week && unassigned.length > 0 && (
         <div className="card p-4 mb-4 border border-amber-200 bg-amber-50/40">
           <h3 className="font-semibold mb-3 text-amber-800">Sans poste assigné ({unassigned.length})</h3>
-          <div className="grid grid-cols-6 gap-2">
-            {DAY_LABELS.slice(0, 6).map((label, day) => {
+          <div className="grid grid-cols-5 gap-2">
+            {DAY_LABELS.slice(0, 5).map((label, day) => {
               const dayShifts = unassigned.filter((s) => s.day_of_week === day);
               const holiday = holidayName(addDaysToIso(startDate, day));
               return (
@@ -151,8 +151,8 @@ export default function PostesClient({
                 <span className="w-3 h-3 rounded" style={{ backgroundColor: machine.color_hex }} />
                 <h3 className="font-semibold">{machine.name}</h3>
               </div>
-              <div className="grid grid-cols-6 gap-2">
-                {DAY_LABELS.slice(0, 6).map((label, day) => {
+              <div className="grid grid-cols-5 gap-2">
+                {DAY_LABELS.slice(0, 5).map((label, day) => {
                   const dateIso = addDaysToIso(startDate, day);
                   const holiday = holidayName(dateIso);
                   const dayClosures = closures.filter((c) => c.machine_id === machine.id && c.date === dateIso);
