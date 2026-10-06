@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addDaysToIso, formatWeekLabel, formatDayShort } from "@/lib/week";
 import { DAY_LABELS, shiftPeriodLabel } from "@/lib/types";
@@ -33,7 +32,6 @@ export default function PostesClient({
   minStaffing: any[];
   closures: any[];
 }) {
-  const router = useRouter();
   const [assigning, setAssigning] = useState<string | null>(null);
   const [repairing, setRepairing] = useState(false);
   const [repairReport, setRepairReport] = useState<{ postesAssignes: number; introuvables: string[]; avertissement?: string } | null>(null);
@@ -47,7 +45,9 @@ export default function PostesClient({
       const data = await res.json();
       if (res.ok) {
         setRepairReport(data.report ? { ...data.report, avertissement: data.avertissement } : null);
-        router.refresh();
+        // Laisse le rapport s'afficher un instant avant le rechargement complet
+        // (plus fiable que router.refresh() pour montrer les postes à jour).
+        setTimeout(() => window.location.reload(), 1500);
       }
     } finally {
       setRepairing(false);
@@ -69,7 +69,7 @@ export default function PostesClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ machineId: machineId || null }),
       });
-      router.refresh();
+      window.location.reload();
     } finally {
       setAssigning(null);
     }

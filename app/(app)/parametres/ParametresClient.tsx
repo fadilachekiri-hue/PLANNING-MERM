@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { DAY_LABELS } from "@/lib/types";
 
 export default function ParametresClient({ machines, rules, minStaffing, closures }: { machines: any[]; rules: any[]; minStaffing: any[]; closures: any[] }) {
-  const router = useRouter();
   const [local, setLocal] = useState(() =>
     Object.fromEntries(
       machines.map((m) => {
@@ -35,12 +33,12 @@ export default function ParametresClient({ machines, rules, minStaffing, closure
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(staffForm),
     });
-    router.refresh();
+    window.location.reload();
   }
 
   async function removeStaffRule(id: string) {
     await fetch(`/api/parametres/effectifs/${id}`, { method: "DELETE" });
-    router.refresh();
+    window.location.reload();
   }
 
   const [closureForm, setClosureForm] = useState({ machineId: machines[0]?.id || "", date: "", startTime: "", endTime: "", reason: "" });
@@ -60,12 +58,12 @@ export default function ParametresClient({ machines, rules, minStaffing, closure
       return;
     }
     setClosureForm({ ...closureForm, date: "", startTime: "", endTime: "", reason: "" });
-    router.refresh();
+    window.location.reload();
   }
 
   async function removeClosure(id: string) {
     await fetch(`/api/parametres/fermetures/${id}`, { method: "DELETE" });
-    router.refresh();
+    window.location.reload();
   }
 
   return (

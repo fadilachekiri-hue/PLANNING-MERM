@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addDaysToIso, formatWeekLabel, formatDayShort } from "@/lib/week";
 import { holidayName } from "@/lib/holidays";
@@ -38,7 +37,6 @@ export default function PlanningClient({
   shifts: Shift[];
   allActiveProfiles: any[];
 }) {
-  const router = useRouter();
   const [editor, setEditor] = useState<{ profileId: string; day: number; shift?: Shift } | null>(null);
   const [creating, setCreating] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -62,7 +60,7 @@ export default function PlanningClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ startDate }),
       });
-      router.refresh();
+      window.location.reload();
     } finally {
       setCreating(false);
     }
@@ -73,7 +71,7 @@ export default function PlanningClient({
     setPublishing(true);
     try {
       const res = await fetch(`/api/planning/semaines/${week.id}/publier`, { method: "POST" });
-      if (res.ok) router.refresh();
+      if (res.ok) window.location.reload();
     } finally {
       setPublishing(false);
     }
@@ -87,14 +85,14 @@ export default function PlanningClient({
       body: JSON.stringify({ profileId }),
     });
     setAddingMember(false);
-    router.refresh();
+    window.location.reload();
   }
 
   async function removeMember(profileId: string, name: string) {
     if (!week) return;
     if (!confirm(`Retirer ${name} de cette semaine uniquement ? Ses créneaux sur cette semaine seront supprimés (les autres semaines ne sont pas touchées).`)) return;
     await fetch(`/api/planning/semaines/${week.id}/membres/${profileId}`, { method: "DELETE" });
-    router.refresh();
+    window.location.reload();
   }
 
   const availableToAdd = allActiveProfiles.filter((p) => !members.some((m) => m.id === p.id));
@@ -233,7 +231,7 @@ export default function PlanningClient({
           onClose={() => setEditor(null)}
           onSaved={() => {
             setEditor(null);
-            router.refresh();
+            window.location.reload();
           }}
         />
       )}

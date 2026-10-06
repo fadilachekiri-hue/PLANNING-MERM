@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 const TYPE_LABEL: Record<string, string> = { conge: "Congé", rtt: "RTT", absence: "Absence", indisponibilite: "Indisponibilité" };
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -11,7 +10,6 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 };
 
 export default function DemandesClient({ isAdmin, requests }: { isAdmin: boolean; requests: any[] }) {
-  const router = useRouter();
   const [form, setForm] = useState({ type: "conge", dateStart: "", dateEnd: "", comment: "" });
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +33,7 @@ export default function DemandesClient({ isAdmin, requests }: { isAdmin: boolean
       }
       setShowForm(false);
       setForm({ type: "conge", dateStart: "", dateEnd: "", comment: "" });
-      router.refresh();
+      window.location.reload();
     } finally {
       setSaving(false);
     }
@@ -54,7 +52,7 @@ export default function DemandesClient({ isAdmin, requests }: { isAdmin: boolean
         `Attention : ${data.daysNeedingReview.join(", ")} — un créneau de travail existait déjà, à revoir manuellement dans le Planning.`
       );
     }
-    router.refresh();
+    window.location.reload();
   }
 
   const pending = requests.filter((r) => r.status === "pending");

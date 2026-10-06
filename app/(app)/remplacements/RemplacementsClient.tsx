@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function RemplacementsClient({ isAdmin, requests, machines, activeProfiles }: { isAdmin: boolean; requests: any[]; machines: any[]; activeProfiles: any[] }) {
-  const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ day: "", startTime: "08:00", endTime: "16:00", machineId: "", reason: "", candidateIds: [] as string[] });
   const [saving, setSaving] = useState(false);
@@ -30,7 +28,7 @@ export default function RemplacementsClient({ isAdmin, requests, machines, activ
         return;
       }
       setShowForm(false);
-      router.refresh();
+      window.location.reload();
     } finally {
       setSaving(false);
     }
@@ -42,7 +40,7 @@ export default function RemplacementsClient({ isAdmin, requests, machines, activ
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ response }),
     });
-    router.refresh();
+    window.location.reload();
   }
 
   async function confirmChoice(id: string, profileId: string) {
@@ -51,13 +49,13 @@ export default function RemplacementsClient({ isAdmin, requests, machines, activ
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ profileId }),
     });
-    router.refresh();
+    window.location.reload();
   }
 
   async function cancel(id: string) {
     if (!confirm("Annuler cette recherche de remplaçant ?")) return;
     await fetch(`/api/remplacements/${id}/annuler`, { method: "POST" });
-    router.refresh();
+    window.location.reload();
   }
 
   return (

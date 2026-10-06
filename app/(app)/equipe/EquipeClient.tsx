@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import type { Profile, Machine, CompetencyLevel, Role } from "@/lib/types";
 
 type Competency = { profile_id: string; machine_id: string; level: CompetencyLevel };
@@ -45,7 +44,6 @@ export default function EquipeClient({
   machines: Machine[];
   competences: Competency[];
 }) {
-  const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -59,7 +57,7 @@ export default function EquipeClient({
   const [rowMessage, setRowMessage] = useState<Record<string, { text: string; ok: boolean; link?: string }>>({});
 
   function refresh() {
-    router.refresh();
+    window.location.reload();
   }
 
   async function submitAdd(e: React.FormEvent) {

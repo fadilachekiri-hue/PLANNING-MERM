@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { DAY_LABELS } from "@/lib/types";
 
 export default function MonCompteClient({ profile, availabilities }: { profile: any; availabilities: any[] }) {
-  const router = useRouter();
   const [shiftPreference, setShiftPreference] = useState(profile.shift_preference);
   const [overtimeOk, setOvertimeOk] = useState(profile.overtime_ok);
   const [saved, setSaved] = useState(false);
@@ -19,7 +17,7 @@ export default function MonCompteClient({ profile, availabilities }: { profile: 
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
-    router.refresh();
+    window.location.reload();
   }
 
   async function addAvailability(e: React.FormEvent) {
@@ -29,12 +27,12 @@ export default function MonCompteClient({ profile, availabilities }: { profile: 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
-    router.refresh();
+    window.location.reload();
   }
 
   async function removeAvailability(id: string) {
     await fetch(`/api/disponibilites/${id}`, { method: "DELETE" });
-    router.refresh();
+    window.location.reload();
   }
 
   return (

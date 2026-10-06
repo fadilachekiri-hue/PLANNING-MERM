@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import type { Combo } from "@/lib/pairing";
 
 export default function BinomesClient({ machines, startDate, paired }: { machines: any[]; startDate: string; paired: any[] }) {
-  const router = useRouter();
   const [form, setForm] = useState({ day: startDate, startTime: "08:00", endTime: "16:00", machineId: machines[0]?.id || "" });
   const [loading, setLoading] = useState(false);
   const [combos, setCombos] = useState<Combo[] | null>(null);
@@ -44,7 +42,7 @@ export default function BinomesClient({ machines, startDate, paired }: { machine
     if (res.ok) {
       setValidated(combo.names.join(" + "));
       setCombos(null);
-      router.refresh();
+      window.location.reload();
     }
   }
 

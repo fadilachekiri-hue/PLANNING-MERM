@@ -1,14 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function NotificationsClient({ notifications }: { notifications: any[] }) {
-  const router = useRouter();
 
   async function markRead(id: string) {
     await fetch(`/api/notifications/${id}/lu`, { method: "POST" });
-    router.refresh();
+    window.location.reload();
   }
 
   return (
