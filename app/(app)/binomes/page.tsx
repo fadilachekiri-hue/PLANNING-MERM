@@ -18,7 +18,7 @@ export default async function BinomesPage({ searchParams }: { searchParams: { se
   if (week) {
     const { data } = await supabase
       .from("shifts")
-      .select("*, profiles(first_name, last_name), machines(name, color_hex)")
+      .select("*, profiles!shifts_profile_id_fkey(first_name, last_name), machines(name, color_hex)")
       .eq("week_id", week.id)
       .not("pair_id", "is", null)
       .order("pair_id");

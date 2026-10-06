@@ -60,7 +60,7 @@ export default async function DashboardPage() {
   const todayIso = new Date().toISOString().slice(0, 10);
   const [{ count: activeCount }, { data: pendingLeaves }, { data: openReplacements }, { data: minStaffing }, { data: todayClosures }] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("status", "active"),
-    supabase.from("leave_requests").select("id, profiles(first_name, last_name), type, date_start, date_end").eq("status", "pending"),
+    supabase.from("leave_requests").select("id, profiles!leave_requests_profile_id_fkey(first_name, last_name), type, date_start, date_end").eq("status", "pending"),
     supabase.from("replacement_requests").select("id, day, start_time, end_time").eq("status", "open"),
     supabase.from("min_staffing").select("*, machines(name)"),
     supabase.from("machine_closures").select("*").eq("date", todayIso),
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
   let todayPresent: any[] = [];
   let weekShifts: any[] = [];
   if (week) {
-    const { data } = await supabase.from("shifts").select("*, profiles(first_name, last_name), machines(name, color_hex)").eq("week_id", week.id);
+    const { data } = await supabase.from("shifts").select("*, profiles!shifts_profile_id_fkey(first_name, last_name), machines(name, color_hex)").eq("week_id", week.id);
     weekShifts = data || [];
     todayPresent = weekShifts.filter((s) => s.day_of_week === todayDow && s.shift_type === "work");
   }

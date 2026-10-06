@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminOrOwner } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { logAction } from "@/lib/audit";
 import { SEPT_OCT_MACHINES } from "@/lib/machines-septembre-octobre-2026";
 import { IMPORT_SHIFTS } from "@/lib/import-planning-2026";
@@ -179,62 +178,8 @@ export async function POST(_request: Request, { params }: { params: { id: string
     }
 
     await logAction(actor.id, "reparation_postes_toutes_semaines", "week", null, report);
-
-    // Vérification : relit en base les créneaux de la semaine demandée juste
-    // après l'écriture, pour voir si les machine_id sont réellement persistés.
-    const { data: verif } = await admin
-      .from("shifts")
-      .select("id, day_of_week, machine_id, shift_type")
-      .eq("week_id", params.id)
-      .eq("shift_type", "work");
-    const toUpdateForThisWeek = toUpdate.filter((u) => (existingShifts || []).some((s: any) => s.id === u.id && s.week_id === params.id));
-
-    // Teste si c'est une différence RLS (règles de sécurité Postgres) entre le
-    // client admin (qui contourne tout) et le client de session (celui utilisé
-    // par la page affichée) : si les comptes diffèrent, le blocage vient des
-    // policies RLS (ex. semaine non "publiée") et non d'un problème de cache.
-    const sessionClient = createClient();
-    const { data: sessionVerif, error: sessionVerifError } = await sessionClient
-      .from("shifts")
-      .select("id, day_of_week, machine_id, shift_type")
-      .eq("week_id", params.id)
-      .eq("shift_type", "work");
-    const { data: weekRow } = await admin.from("weeks").select("id, start_date, status").eq("id", params.id).maybeSingle();
-
-    // Reproduit exactement la requête de app/(app)/planning/postes/page.tsx
-    // (avec la jointure profiles) pour voir si celle-ci, précisément, perd des
-    // lignes alors que la même requête sans jointure n'en perd pas.
-    const { data: pageQueryVerif, error: pageQueryError } = await sessionClient
-      .from("shifts")
-      .select("*, profiles(first_name, last_name)")
-      .eq("week_id", params.id)
-      .eq("shift_type", "work");
-
-    console.log("[reparer-postes] diagnostic", JSON.stringify({
-      weekIdRequested: params.id,
-      weekRow,
-      machinesCount: (machines || []).length,
-      machineNames: (machines || []).map((m: any) => m.name),
-      weeksCount: (weeks || []).length,
-      relevantWeekIds: relevantWeekIds.length,
-      unmatchedImportKeys,
-      existingShiftsCount: (existingShifts || []).length,
-      toInsertCount: toInsert.length,
-      toUpdateCount: toUpdate.length,
-      toUpdateForThisWeekCount: toUpdateForThisWeek.length,
-      verifShiftsForThisWeek_admin: (verif || []).length,
-      verifShiftsForThisWeek_session: (sessionVerif || []).length,
-      sessionVerifError: sessionVerifError?.message || null,
-      pageQueryVerifCount: (pageQueryVerif || []).length,
-      pageQueryError: pageQueryError ? { message: pageQueryError.message, code: (pageQueryError as any).code, details: (pageQueryError as any).details, hint: (pageQueryError as any).hint } : null,
-      pageQuerySample: (pageQueryVerif || []).slice(0, 2),
-      postesAssignes: report.postesAssignes,
-      introuvablesCount: report.introuvables.length,
-      introuvablesSample: report.introuvables.slice(0, 10),
-    }));
     return NextResponse.json({ ok: true, report });
   } catch (err: any) {
-    console.log("[reparer-postes] erreur", err?.message, err?.stack);
     return NextResponse.json({ error: err?.message || "Erreur inattendue lors de la réparation." }, { status: 500 });
   }
 }

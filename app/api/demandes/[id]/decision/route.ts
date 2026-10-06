@@ -38,7 +38,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   const admin = createAdminClient();
-  const { data: leave } = await admin.from("leave_requests").select("*, profiles(first_name, contact_email)").eq("id", params.id).single();
+  const { data: leave } = await admin.from("leave_requests").select("*, profiles!leave_requests_profile_id_fkey(first_name, contact_email)").eq("id", params.id).single();
   if (!leave) return NextResponse.json({ error: "Demande introuvable." }, { status: 404 });
   if (leave.status !== "pending") return NextResponse.json({ error: "Cette demande a déjà été traitée." }, { status: 400 });
 

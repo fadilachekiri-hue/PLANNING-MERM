@@ -9,7 +9,7 @@ export default async function DemandesPage() {
   const supabase = createClient();
 
   const query = admin
-    ? supabase.from("leave_requests").select("*, profiles(first_name, last_name)").order("created_at", { ascending: false })
+    ? supabase.from("leave_requests").select("*, profiles!leave_requests_profile_id_fkey(first_name, last_name)").order("created_at", { ascending: false })
     : supabase.from("leave_requests").select("*").eq("profile_id", profile.id).order("created_at", { ascending: false });
 
   const { data: requests } = await query;
