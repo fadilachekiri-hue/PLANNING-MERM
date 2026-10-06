@@ -96,29 +96,24 @@ export default function PostesClient({
           <p className="font-semibold">{formatWeekLabel(startDate)}</p>
           <button className="btn-secondary print:hidden" onClick={() => goTo(1)}>Semaine suivante →</button>
         </div>
-        <div className="flex gap-2 print:hidden">
+        <div className="flex gap-2 print:hidden flex-wrap items-center">
+          {isAdmin && (
+            <button className="btn-secondary text-xs" onClick={repairPostes} disabled={repairing}>
+              {repairing ? "Réparation..." : "Réparer les postes (sept.-oct. 2026)"}
+            </button>
+          )}
           <button className="btn-secondary" onClick={() => window.print()}>Imprimer / PDF</button>
           <Link href="/planning" className="btn-secondary">Vue par MERM</Link>
         </div>
       </div>
 
-      {!week && <div className="card p-8 text-center text-slate-400">Aucun planning pour cette semaine.</div>}
-
-      {week && weekNotYetPlanned && (
-        <div className="card p-4 mb-4 border border-slate-200 bg-slate-50 text-sm text-slate-500">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <span>Cette semaine n'a pas encore de créneaux programmés — aucune alerte d'effectif ne s'affiche tant qu'elle reste vide.</span>
-            {isAdmin && (
-              <button className="btn-secondary text-xs shrink-0" onClick={repairPostes} disabled={repairing}>
-                {repairing ? "Réparation..." : "Réparer les postes (toutes les semaines sept.-oct. 2026)"}
-              </button>
-            )}
-          </div>
+      {(repairError || repairReport) && (
+        <div className="card p-4 mb-4 border border-slate-200 bg-slate-50 text-sm">
           {repairError && (
-            <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">⚠ {repairError}</p>
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">⚠ {repairError}</p>
           )}
           {repairReport && (
-            <div className="mt-2 text-xs">
+            <div className="text-xs">
               {repairReport.avertissement && <p className="text-slate-500">{repairReport.avertissement}</p>}
               <p className="text-slate-600">{repairReport.postesAssignes} poste(s) réparé(s) sur {repairReport.semainesTraitees} semaine(s) — rechargement...</p>
               {repairReport.introuvables.length > 0 && (
@@ -128,6 +123,14 @@ export default function PostesClient({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {!week && <div className="card p-8 text-center text-slate-400">Aucun planning pour cette semaine.</div>}
+
+      {week && weekNotYetPlanned && (
+        <div className="card p-4 mb-4 border border-slate-200 bg-slate-50 text-sm text-slate-500">
+          Cette semaine n'a pas encore de créneaux programmés — aucune alerte d'effectif ne s'affiche tant qu'elle reste vide.
         </div>
       )}
 

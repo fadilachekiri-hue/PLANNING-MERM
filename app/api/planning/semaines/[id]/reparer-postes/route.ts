@@ -27,6 +27,14 @@ const FALLBACK_LAST_NAME: Record<string, string> = {
   "TEIXEIRA": "Teixeira",
 };
 
+function norm(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 async function mapWithConcurrency<T>(items: T[], limit: number, fn: (item: T) => Promise<void>) {
   let i = 0;
   async function worker() {
@@ -57,18 +65,30 @@ export async function POST(_request: Request, { params }: { params: { id: string
 
     const [{ data: machines }, { data: profiles }, { data: weeks }] = await Promise.all([
       admin.from("machines").select("id, name").eq("active", true),
-      admin.from("profiles").select("id, last_name"),
+      admin.from("profiles").select("id, first_name, last_name"),
       admin.from("weeks").select("id, start_date"),
     ]);
 
     const machineIdByName = new Map((machines || []).map((m) => [m.name, m.id]));
-    const weekIdByStart = new Map((weeks || []).map((w) => [w.start_date, w.id]));
+    // .slice(0, 10) : certaines colonnes "date" renvoient parfois un horodatage
+    // complet (ex. "2026-10-05T00:00:00") au lieu de "2026-10-05" — sans cette
+    // normalisation, la comparaison stricte avec les chaînes "YYYY-MM-DD" de
+    // SEPT_OCT_MACHINES échouait silencieusement et aucune semaine ne matchait.
+    const weekIdByStart = new Map((weeks || []).map((w) => [String(w.start_date).slice(0, 10), w.id]));
 
+    const unmatchedImportKeys: string[] = [];
     const profileIdByImportKey = new Map<string, string | null>();
     for (const importKey of new Set(SEPT_OCT_MACHINES.map((a) => a.lastName))) {
-      const lastName = (FALLBACK_LAST_NAME[importKey] || importKey).toLowerCase();
-      const match = (profiles || []).find((p: any) => (p.last_name || "").toLowerCase() === lastName);
+      const expected = norm(FALLBACK_LAST_NAME[importKey] || importKey);
+      // Compare au nom ET au prénom (pas seulement au nom de famille) : certains
+      // profils ont prénom/nom inversés par rapport à la correction attendue
+      // (ex. "Jallal" stocké comme prénom et "Benhmidal" comme nom de famille),
+      // ce qui faisait échouer silencieusement le matching strict sur last_name.
+      const match = (profiles || []).find(
+        (p: any) => norm(p.last_name || "") === expected || norm(p.first_name || "") === expected
+      );
       profileIdByImportKey.set(importKey, match?.id || null);
+      if (!match) unmatchedImportKeys.push(importKey);
     }
 
     const relevantWeekIds = [...new Set(SEPT_OCT_MACHINES.map((a) => weekIdByStart.get(a.weekStart)).filter(Boolean))] as string[];
@@ -132,20 +152,29 @@ export async function POST(_request: Request, { params }: { params: { id: string
       report.postesAssignes++;
     }
 
+    if (unmatchedImportKeys.length > 0) {
+      report.introuvables.unshift(`Profils non reconnus (nom et prénom) : ${unmatchedImportKeys.join(", ")}`);
+    }
+
     if (weekMemberPairs.size > 0) {
       const { error } = await admin.from("week_members").upsert([...weekMemberPairs.values()], { onConflict: "week_id,profile_id" });
-      if (error) report.introuvables.push(`Membres de semaine : ${error.message}`);
+      if (error) report.introuvables.push(`Membres de semaine : ${error.message} (${error.details || error.hint || ""})`);
     }
 
     if (toInsert.length > 0) {
       const { error } = await admin.from("shifts").insert(toInsert);
-      if (error) report.introuvables.push(`Création groupée des créneaux : ${error.message}`);
+      if (error) report.introuvables.push(`Création groupée des créneaux (${toInsert.length}) : ${error.message} (${error.details || error.hint || ""})`);
     }
 
     if (toUpdate.length > 0) {
+      const updateErrors: string[] = [];
       await mapWithConcurrency(toUpdate, 15, async (u) => {
-        await admin.from("shifts").update({ machine_id: u.machine_id, notes: u.notes }).eq("id", u.id);
+        const { error } = await admin.from("shifts").update({ machine_id: u.machine_id, notes: u.notes }).eq("id", u.id);
+        if (error) updateErrors.push(error.message);
       });
+      if (updateErrors.length > 0) {
+        report.introuvables.push(`${updateErrors.length} mise(s) à jour en échec : ${updateErrors[0]}`);
+      }
     }
 
     await logAction(actor.id, "reparation_postes_toutes_semaines", "week", null, report);
