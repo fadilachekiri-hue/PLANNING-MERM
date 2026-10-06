@@ -178,8 +178,23 @@ export async function POST(_request: Request, { params }: { params: { id: string
     }
 
     await logAction(actor.id, "reparation_postes_toutes_semaines", "week", null, report);
+    console.log("[reparer-postes] diagnostic", JSON.stringify({
+      weekIdRequested: params.id,
+      machinesCount: (machines || []).length,
+      machineNames: (machines || []).map((m: any) => m.name),
+      weeksCount: (weeks || []).length,
+      relevantWeekIds: relevantWeekIds.length,
+      unmatchedImportKeys,
+      existingShiftsCount: (existingShifts || []).length,
+      toInsertCount: toInsert.length,
+      toUpdateCount: toUpdate.length,
+      postesAssignes: report.postesAssignes,
+      introuvablesCount: report.introuvables.length,
+      introuvablesSample: report.introuvables.slice(0, 10),
+    }));
     return NextResponse.json({ ok: true, report });
   } catch (err: any) {
+    console.log("[reparer-postes] erreur", err?.message, err?.stack);
     return NextResponse.json({ error: err?.message || "Erreur inattendue lors de la réparation." }, { status: 500 });
   }
 }
