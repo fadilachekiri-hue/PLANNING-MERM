@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminOrOwner } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { logAction } from "@/lib/audit";
 import { SEPT_OCT_MACHINES } from "@/lib/machines-septembre-octobre-2026";
 import { IMPORT_SHIFTS } from "@/lib/import-planning-2026";
@@ -188,8 +189,21 @@ export async function POST(_request: Request, { params }: { params: { id: string
       .eq("shift_type", "work");
     const toUpdateForThisWeek = toUpdate.filter((u) => (existingShifts || []).some((s: any) => s.id === u.id && s.week_id === params.id));
 
+    // Teste si c'est une différence RLS (règles de sécurité Postgres) entre le
+    // client admin (qui contourne tout) et le client de session (celui utilisé
+    // par la page affichée) : si les comptes diffèrent, le blocage vient des
+    // policies RLS (ex. semaine non "publiée") et non d'un problème de cache.
+    const sessionClient = createClient();
+    const { data: sessionVerif, error: sessionVerifError } = await sessionClient
+      .from("shifts")
+      .select("id, day_of_week, machine_id, shift_type")
+      .eq("week_id", params.id)
+      .eq("shift_type", "work");
+    const { data: weekRow } = await admin.from("weeks").select("id, start_date, status").eq("id", params.id).maybeSingle();
+
     console.log("[reparer-postes] diagnostic", JSON.stringify({
       weekIdRequested: params.id,
+      weekRow,
       machinesCount: (machines || []).length,
       machineNames: (machines || []).map((m: any) => m.name),
       weeksCount: (weeks || []).length,
@@ -199,7 +213,9 @@ export async function POST(_request: Request, { params }: { params: { id: string
       toInsertCount: toInsert.length,
       toUpdateCount: toUpdate.length,
       toUpdateForThisWeekCount: toUpdateForThisWeek.length,
-      verifShiftsForThisWeek: (verif || []).map((s: any) => ({ day: s.day_of_week, machine_id: s.machine_id })),
+      verifShiftsForThisWeek_admin: (verif || []).length,
+      verifShiftsForThisWeek_session: (sessionVerif || []).length,
+      sessionVerifError: sessionVerifError?.message || null,
       postesAssignes: report.postesAssignes,
       introuvablesCount: report.introuvables.length,
       introuvablesSample: report.introuvables.slice(0, 10),
