@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { addDaysToIso, formatWeekLabel, formatDayShort } from "@/lib/week";
-import { DAY_LABELS, shiftPeriodLabel } from "@/lib/types";
+import { DAY_LABELS, shiftPeriodLabel, MORNING_SHIFT, EVENING_SHIFT } from "@/lib/types";
 import { holidayName } from "@/lib/holidays";
 import MachineSelect from "../MachineSelect";
 
@@ -33,6 +33,11 @@ export default function PostesClient({
   closures: any[];
 }) {
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [addingTo, setAddingTo] = useState<{ machineId: string; day: number } | null>(null);
+  const [addProfileId, setAddProfileId] = useState("");
+  const [addPeriod, setAddPeriod] = useState<"matin" | "soir">("matin");
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const [repairing, setRepairing] = useState(false);
   const [repairReport, setRepairReport] = useState<{ postesAssignes: number; semainesTraitees: number; introuvables: string[]; avertissement?: string } | null>(null);
   const [repairError, setRepairError] = useState<string | null>(null);
@@ -65,6 +70,47 @@ export default function PostesClient({
     // de Next.js) : plus fiable sur certains navigateurs/PWA où le clic
     // "Semaine suivante" restait bloqué sur la même semaine.
     window.location.href = `/planning/postes?semaine=${addDaysToIso(startDate, offsetWeeks * 7)}`;
+  }
+
+  function openAdd(machineId: string, day: number) {
+    setAddingTo({ machineId, day });
+    setAddProfileId("");
+    setAddPeriod("matin");
+    setAddError(null);
+  }
+
+  async function addDirectShift() {
+    if (!week || !addingTo || !addProfileId) return;
+    setAddSaving(true);
+    setAddError(null);
+    try {
+      const times = addPeriod === "matin" ? MORNING_SHIFT : EVENING_SHIFT;
+      const res = await fetch("/api/planning/creneaux", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekId: week.id,
+          profileId: addProfileId,
+          dayOfWeek: addingTo.day,
+          startTime: times.start,
+          endTime: times.end,
+          shiftType: "work",
+          machineId: addingTo.machineId,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        window.location.reload();
+      } else if (res.status === 409) {
+        setAddError("Cette personne a déjà un créneau qui chevauche cet horaire ce jour-là.");
+      } else {
+        setAddError(data?.error || `Erreur serveur (${res.status}).`);
+      }
+    } catch (e: any) {
+      setAddError(e?.message || "Échec de connexion au serveur.");
+    } finally {
+      setAddSaving(false);
+    }
   }
 
   async function assignMachine(shiftId: string, machineId: string) {
@@ -257,6 +303,47 @@ export default function PostesClient({
                       )}
                       {xstrahlWithoutScanner && (
                         <p className="text-xs text-amber-600 mt-1">⚠ X-STRAHL sans Scanner en parallèle (règle à confirmer)</p>
+                      )}
+                      {isAdmin && !closedAllDay && (
+                        <div className="print:hidden">
+                          {addingTo && addingTo.machineId === machine.id && addingTo.day === day ? (
+                            <div className="mt-2 space-y-1 border-t border-slate-100 pt-2">
+                              <select className="input text-xs py-1" value={addProfileId} onChange={(e) => setAddProfileId(e.target.value)}>
+                                <option value="">Choisir un MERM...</option>
+                                {merms.map((m: any) => (
+                                  <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                                ))}
+                              </select>
+                              <div className="flex gap-1">
+                                <button
+                                  type="button"
+                                  className={`flex-1 text-xs rounded px-2 py-1 border ${addPeriod === "matin" ? "bg-slate-800 text-white border-slate-800" : "border-slate-200"}`}
+                                  onClick={() => setAddPeriod("matin")}
+                                >
+                                  Matin
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`flex-1 text-xs rounded px-2 py-1 border ${addPeriod === "soir" ? "bg-slate-800 text-white border-slate-800" : "border-slate-200"}`}
+                                  onClick={() => setAddPeriod("soir")}
+                                >
+                                  Soir
+                                </button>
+                              </div>
+                              {addError && <p className="text-xs text-red-600">{addError}</p>}
+                              <div className="flex gap-1">
+                                <button className="btn-primary text-xs flex-1" disabled={!addProfileId || addSaving} onClick={addDirectShift}>
+                                  {addSaving ? "..." : "Ajouter"}
+                                </button>
+                                <button className="btn-secondary text-xs" onClick={() => setAddingTo(null)}>Annuler</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button className="text-xs text-slate-400 hover:text-slate-700 mt-1" onClick={() => openAdd(machine.id, day)}>
+                              + Ajouter
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   );
