@@ -201,6 +201,15 @@ export async function POST(_request: Request, { params }: { params: { id: string
       .eq("shift_type", "work");
     const { data: weekRow } = await admin.from("weeks").select("id, start_date, status").eq("id", params.id).maybeSingle();
 
+    // Reproduit exactement la requête de app/(app)/planning/postes/page.tsx
+    // (avec la jointure profiles) pour voir si celle-ci, précisément, perd des
+    // lignes alors que la même requête sans jointure n'en perd pas.
+    const { data: pageQueryVerif, error: pageQueryError } = await sessionClient
+      .from("shifts")
+      .select("*, profiles(first_name, last_name)")
+      .eq("week_id", params.id)
+      .eq("shift_type", "work");
+
     console.log("[reparer-postes] diagnostic", JSON.stringify({
       weekIdRequested: params.id,
       weekRow,
@@ -216,6 +225,9 @@ export async function POST(_request: Request, { params }: { params: { id: string
       verifShiftsForThisWeek_admin: (verif || []).length,
       verifShiftsForThisWeek_session: (sessionVerif || []).length,
       sessionVerifError: sessionVerifError?.message || null,
+      pageQueryVerifCount: (pageQueryVerif || []).length,
+      pageQueryError: pageQueryError ? { message: pageQueryError.message, code: (pageQueryError as any).code, details: (pageQueryError as any).details, hint: (pageQueryError as any).hint } : null,
+      pageQuerySample: (pageQueryVerif || []).slice(0, 2),
       postesAssignes: report.postesAssignes,
       introuvablesCount: report.introuvables.length,
       introuvablesSample: report.introuvables.slice(0, 10),
