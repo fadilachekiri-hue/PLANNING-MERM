@@ -41,6 +41,29 @@ export default function PostesClient({
   const [repairing, setRepairing] = useState(false);
   const [repairReport, setRepairReport] = useState<{ postesAssignes: number; semainesTraitees: number; introuvables: string[]; avertissement?: string } | null>(null);
   const [repairError, setRepairError] = useState<string | null>(null);
+  const [buildingDecembre, setBuildingDecembre] = useState(false);
+  const [decembreReport, setDecembreReport] = useState<{ postesAssignes: number; semainesCreees: number; introuvables: string[] } | null>(null);
+  const [decembreError, setDecembreError] = useState<string | null>(null);
+
+  async function construireDecembre() {
+    setBuildingDecembre(true);
+    setDecembreReport(null);
+    setDecembreError(null);
+    try {
+      const res = await fetch(`/api/planning/semaines/construire-decembre`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
+        setDecembreReport(data.report);
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setDecembreError(data?.error || `Erreur serveur (${res.status}).`);
+      }
+    } catch (e: any) {
+      setDecembreError(e?.message || "Échec de connexion au serveur.");
+    } finally {
+      setBuildingDecembre(false);
+    }
+  }
 
   async function repairPostes() {
     if (!week) return;
@@ -155,10 +178,33 @@ export default function PostesClient({
               {repairing ? "Réparation..." : "Réparer les postes (sept.-oct. 2026)"}
             </button>
           )}
+          {isAdmin && (
+            <button className="btn-secondary text-xs" onClick={construireDecembre} disabled={buildingDecembre}>
+              {buildingDecembre ? "Construction..." : "Construire le planning décembre 2026"}
+            </button>
+          )}
           <button className="btn-secondary" onClick={() => window.print()}>Imprimer / PDF</button>
           <Link href="/planning" className="btn-secondary">Vue par MERM</Link>
         </div>
       </div>
+
+      {(decembreError || decembreReport) && (
+        <div className="card p-4 mb-4 border border-slate-200 bg-slate-50 text-sm">
+          {decembreError && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">⚠ {decembreError}</p>
+          )}
+          {decembreReport && (
+            <div className="text-xs">
+              <p className="text-slate-600">{decembreReport.postesAssignes} créneau(x) programmé(s), {decembreReport.semainesCreees} semaine(s) créée(s) — rechargement...</p>
+              {decembreReport.introuvables.length > 0 && (
+                <ul className="list-disc pl-4 text-amber-700 mt-1">
+                  {decembreReport.introuvables.map((e, i) => <li key={i}>{e}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {(repairError || repairReport) && (
         <div className="card p-4 mb-4 border border-slate-200 bg-slate-50 text-sm">
