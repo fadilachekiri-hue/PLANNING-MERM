@@ -50,7 +50,7 @@ export default function PostesClient({
     setDecembreReport(null);
     setDecembreError(null);
     try {
-      const res = await fetch(`/api/planning/semaines/construire-decembre`, { method: "POST" });
+      const res = await fetch(`/api/planning/semaines/construire-decembre-valide`, { method: "POST" });
       const data = await res.json().catch(() => null);
       if (res.ok && data) {
         setDecembreReport(data.report);
@@ -180,7 +180,7 @@ export default function PostesClient({
           )}
           {isAdmin && (
             <button className="btn-secondary text-xs" onClick={construireDecembre} disabled={buildingDecembre}>
-              {buildingDecembre ? "Construction..." : "Construire le planning décembre 2026"}
+              {buildingDecembre ? "Application..." : "Appliquer le planning validé (1-21 déc.)"}
             </button>
           )}
           <button className="btn-secondary" onClick={() => window.print()}>Imprimer / PDF</button>

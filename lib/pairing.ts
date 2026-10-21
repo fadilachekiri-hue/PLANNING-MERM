@@ -50,30 +50,46 @@ export function proposePairs(params: {
   machineName: string;
   /** Fréquence des binômes déjà formés récemment sur ce poste (clé = pairKey(idA, idB)). */
   recentPairFrequency?: Record<string, number>;
+  /**
+   * Personnes déjà confirmées sur ce créneau (ex. le reste d'un binôme dont
+   * un membre est absent) : à garder dans chaque combinaison proposée, sans
+   * les reproposer comme candidates. `candidates` ne doit alors contenir que
+   * les remplaçant·e·s possibles, et `openSeats` le nombre de places à
+   * pourvoir (par défaut teamSize - mustInclude.length).
+   */
+  mustInclude?: Candidate[];
+  openSeats?: number;
 }): { combos: Combo[]; diagnostic: string | null } {
   const { candidates, teamSize, minAutonomous, allowTrainingWithSupervisor, slotHours, slotIsMorning, machineName, recentPairFrequency } = params;
+  const mustInclude = params.mustInclude || [];
+  const openSeats = params.openSeats ?? Math.max(teamSize - mustInclude.length, 0);
 
+  if (openSeats === 0) {
+    return { combos: [], diagnostic: "Aucune place à pourvoir : l'équipe déjà en place suffit pour ce créneau." };
+  }
+
+  const mustAutonomous = mustInclude.filter((c) => c.level === "autonomous").length;
   const autonomous = candidates.filter((c) => c.level === "autonomous");
-  const training = candidates.filter((c) => c.level === "training");
 
-  if (autonomous.length < minAutonomous) {
+  if (mustAutonomous + autonomous.length < minAutonomous) {
     return {
       combos: [],
-      diagnostic: `Seulement ${autonomous.length} personne(s) autonome(s) disponible(s), alors que la règle exige au moins ${minAutonomous}.`,
+      diagnostic: `Seulement ${mustAutonomous + autonomous.length} personne(s) autonome(s) disponible(s) au total, alors que la règle exige au moins ${minAutonomous}.`,
     };
   }
 
   const pool = allowTrainingWithSupervisor ? candidates : autonomous;
-  if (pool.length < teamSize) {
-    return { combos: [], diagnostic: `Pas assez de personnes formées disponibles pour composer un binôme de ${teamSize} personne(s).` };
+  if (pool.length < openSeats) {
+    return { combos: [], diagnostic: `Pas assez de personnes formées et disponibles pour pourvoir ${openSeats} place(s) sur ce créneau.` };
   }
 
   // Limite raisonnable pour éviter une explosion combinatoire.
   const limitedPool = pool.slice(0, 20);
-  const raw = combinations(limitedPool, teamSize);
+  const raw = combinations(limitedPool, openSeats);
 
   const combos: Combo[] = [];
-  for (const combo of raw) {
+  for (const picked of raw) {
+    const combo = [...mustInclude, ...picked];
     const nbAutonomous = combo.filter((c) => c.level === "autonomous").length;
     if (nbAutonomous < minAutonomous) continue;
     const nbTraining = combo.length - nbAutonomous;

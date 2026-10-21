@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAction, notify } from "@/lib/audit";
 import { sendEmail, baseEmailLayout } from "@/lib/email";
 import { mondayOf } from "@/lib/week";
+import { findReplacementProposals, type ReplacementResult } from "@/lib/replacement";
 
 const LEAVE_SHIFT_TYPE: Record<string, string | null> = {
   conge: "conge",
@@ -48,6 +49,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .eq("id", params.id);
 
   const daysNeedingReview: string[] = [];
+  type ImpactItem = {
+    date: string;
+    weekId: string;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    machineId: string;
+  } & ReplacementResult;
+  const impact: ImpactItem[] = [];
 
   if (status === "approved") {
     const shiftType = LEAVE_SHIFT_TYPE[leave.type];
@@ -60,7 +70,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         const dow = dayOfWeekIndex(dateIso);
         const { data: existingWork } = await admin
           .from("shifts")
-          .select("id")
+          .select("id, machine_id, start_time, end_time")
           .eq("week_id", week.id)
           .eq("profile_id", leave.profile_id)
           .eq("day_of_week", dow)
@@ -68,6 +78,30 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
         if (existingWork && existingWork.length > 0) {
           daysNeedingReview.push(dateIso);
+          // La personne est bien absente : son créneau est mis à jour vers le
+          // type de congé (il restait auparavant affiché "Travail" par erreur),
+          // puis on calcule automatiquement des propositions de remplacement
+          // pour chaque poste qu'elle libère.
+          for (const shift of existingWork) {
+            await admin
+              .from("shifts")
+              .update({ shift_type: shiftType, start_time: null, end_time: null, machine_id: null, updated_by: actor.id })
+              .eq("id", shift.id);
+
+            if (shift.machine_id && shift.start_time && shift.end_time) {
+              const result = await findReplacementProposals(admin, {
+                weekId: week.id,
+                monday,
+                dayOfWeek: dow,
+                machineId: shift.machine_id,
+                startTime: shift.start_time,
+                endTime: shift.end_time,
+                excludeProfileId: leave.profile_id,
+                dateIso,
+              });
+              impact.push({ date: dateIso, weekId: week.id, dayOfWeek: dow, startTime: shift.start_time, endTime: shift.end_time, machineId: shift.machine_id, ...result });
+            }
+          }
           continue;
         }
 
@@ -103,7 +137,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     });
   }
 
-  await logAction(actor.id, "decision_demande", "leave_request", params.id, { status });
+  await logAction(actor.id, "decision_demande", "leave_request", params.id, { status, remplacementsProposes: impact.length });
 
-  return NextResponse.json({ ok: true, daysNeedingReview });
+  return NextResponse.json({ ok: true, daysNeedingReview, impact });
 }

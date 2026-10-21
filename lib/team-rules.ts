@@ -25,7 +25,19 @@ export const REFERENTS: Record<string, string[]> = {
 };
 
 /** Nouveaux arrivants / en cours de formation : à associer à une personne calme et expérimentée. */
-export const NEEDS_EXPERIENCED_PARTNER = ["coulibaly", "gautier"].map(norm); // Fanta Coulibaly, Gautier
+export const NEEDS_EXPERIENCED_PARTNER = ["coulibaly", "gautier", "irles"].map(norm); // Fanta Coulibaly, Gautier, Manon Irles
+
+/**
+ * En formation sur une seule machine, avec une liste fermée de référent·e·s
+ * autorisé·e·s (jamais seul·e, et jamais avec un autre référent que ceux-ci).
+ */
+export const TRAINEE_SINGLE_MACHINE: Record<string, { machine: string; referents: string[] }> = {
+  [norm("Irles")]: { machine: norm("Clinac"), referents: ["renou", "rahmani", "fonteneau"].map(norm) },
+};
+
+export function traineeConstraint(lastName: string): { machine: string; referents: string[] } | null {
+  return TRAINEE_SINGLE_MACHINE[norm(lastName)] || null;
+}
 
 /** Personnes calmes et expérimentées, adaptées en binôme avec un nouvel arrivant. */
 export const CALM_EXPERIENCED = ["rahmani"].map(norm); // Chanez Rahmani, sur le Clinac notamment

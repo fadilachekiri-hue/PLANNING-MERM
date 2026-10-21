@@ -137,4 +137,10 @@ export const PERSON_CONFIG: PersonConfig[] = [
     machines: ["Versa HD"],
     notes: "Peut travailler uniquement sur le Versa HD, uniquement le matin.",
   },
+  {
+    importKey: "IRLES",
+    lastName: "Irles",
+    machines: ["Clinac"],
+    notes: "En formation sur Clinac. Jamais seule : toujours en trinôme avec un référent (Renou, Rahmani ou Fonteneau).",
+  },
 ];
