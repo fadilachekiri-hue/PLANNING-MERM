@@ -189,6 +189,7 @@ export default function PostesClient({
               {buildingDecembre ? "Application..." : "Appliquer le planning validé (1-21 déc.)"}
             </button>
           )}
+          <Link href={`/planning/apercu?semaine=${startDate}`} className="btn-secondary">📄 Aperçu imprimable</Link>
           <button className="btn-secondary" onClick={() => window.print()}>Imprimer / PDF</button>
           <Link href="/planning" className="btn-secondary">Vue par MERM</Link>
         </div>
