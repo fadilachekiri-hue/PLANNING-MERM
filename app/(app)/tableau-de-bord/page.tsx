@@ -2,12 +2,27 @@ import Link from "next/link";
 import { getCurrentProfile, isAdminOrOwner } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { mondayOf } from "@/lib/week";
-import { DAY_LABELS, shiftPeriodLabel } from "@/lib/types";
+import { DAY_LABELS, shiftPeriodLabel, SHIFT_TYPE_LABELS, LEAVE_TYPE_LABELS, LEAVE_TYPE_COLORS, type LeaveType, type ShiftType } from "@/lib/types";
+
+const SHIFT_TYPE_COLORS: Record<string, string> = {
+  conge: "bg-purple-50 text-purple-700 border-purple-200",
+  rtt: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  repos: "bg-slate-100 text-slate-600 border-slate-200",
+  absence: "bg-red-50 text-red-700 border-red-200",
+  tp: "bg-amber-50 text-amber-700 border-amber-200",
+  rr: "bg-cyan-50 text-cyan-700 border-cyan-200",
+  fo: "bg-emerald-50 text-emerald-700 border-emerald-200",
+};
 import { holidayName } from "@/lib/holidays";
 
 function todayDowIndex(): number {
   const jsDay = new Date().getDay();
   return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+function todayLabel(): string {
+  const d = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  return d.charAt(0).toUpperCase() + d.slice(1);
 }
 
 export default async function DashboardPage() {
@@ -29,28 +44,30 @@ export default async function DashboardPage() {
     }
     const { data: pendingRequests } = await supabase.from("leave_requests").select("id").eq("profile_id", profile.id).eq("status", "pending");
     const { data: unread } = await supabase.from("notifications").select("id").eq("profile_id", profile.id).is("read_at", null);
+    const todayShifts = myShifts.filter((s) => s.day_of_week === todayDow);
 
     return (
       <div className="space-y-6">
-        <h1 className="text-xl font-semibold">Bonjour {profile.first_name} 👋</h1>
+        <div>
+          <h1 className="text-xl font-semibold">Bonjour {profile.first_name} 👋</h1>
+          <p className="text-sm text-slate-400">{todayLabel()}</p>
+        </div>
         {todayHoliday && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            🎌 {todayHoliday} — jour férié.
-          </p>
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">🎌 {todayHoliday} — jour férié.</p>
         )}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat label="Demandes en attente" value={String(pendingRequests?.length || 0)} />
-          <Stat label="Notifications non lues" value={String(unread?.length || 0)} />
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard label="Demandes en attente" value={pendingRequests?.length || 0} accent="amber" icon="📋" link="/demandes" />
+          <StatCard label="Notifications non lues" value={unread?.length || 0} accent="blue" icon="🔔" link="/notifications" />
         </div>
 
         <div className="card p-5">
           <h2 className="font-semibold mb-3">Aujourd'hui — {DAY_LABELS[todayDow]}</h2>
-          {myShifts.filter((s) => s.day_of_week === todayDow).length === 0 && <p className="text-sm text-slate-400">Rien de prévu aujourd'hui.</p>}
-          {myShifts.filter((s) => s.day_of_week === todayDow).map((s) => (
-            <p key={s.id} className="text-sm">
-              {s.shift_type === "work" ? `${shiftPeriodLabel(s.start_time)} — ${s.machines?.name || "Non affecté"}` : s.shift_type}
-            </p>
-          ))}
+          {todayShifts.length === 0 && <p className="text-sm text-slate-400">Rien de prévu aujourd'hui.</p>}
+          <div className="space-y-2">
+            {todayShifts.map((s) => (
+              <ShiftRow key={s.id} shift={s} />
+            ))}
+          </div>
           <Link href="/planning/postes" className="text-sm text-brand-600 hover:underline mt-3 inline-block">Voir tout le planning →</Link>
         </div>
       </div>
@@ -73,6 +90,7 @@ export default async function DashboardPage() {
     weekShifts = data || [];
     todayPresent = weekShifts.filter((s) => s.day_of_week === todayDow && s.shift_type === "work");
   }
+  todayPresent.sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
 
   function overlaps(aS: string, aE: string, bS: string, bE: string) {
     return aS < bE && bS < aE;
@@ -92,17 +110,20 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Tableau de bord</h1>
+      <div>
+        <h1 className="text-xl font-semibold">Tableau de bord</h1>
+        <p className="text-sm text-slate-400">{todayLabel()}</p>
+      </div>
       {todayHoliday && (
         <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
           🎌 {todayHoliday} — jour férié, normalement fermé.
         </p>
       )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Stat label="Personnel actif" value={String(activeCount || 0)} />
-        <Stat label="Présents aujourd'hui" value={String(todayPresent.length)} />
-        <Stat label="Demandes en attente" value={String(pendingLeaves?.length || 0)} link="/demandes" />
-        <Stat label="Remplacements ouverts" value={String(openReplacements?.length || 0)} link="/remplacements" />
+        <StatCard label="Personnel actif" value={activeCount || 0} accent="slate" icon="👥" />
+        <StatCard label="Présents aujourd'hui" value={todayPresent.length} accent="emerald" icon="✅" />
+        <StatCard label="Demandes en attente" value={pendingLeaves?.length || 0} accent="amber" icon="📋" link="/demandes" />
+        <StatCard label="Remplacements ouverts" value={openReplacements?.length || 0} accent="purple" icon="🔄" link="/remplacements" />
       </div>
 
       {todayShortages.length > 0 && (
@@ -118,35 +139,90 @@ export default async function DashboardPage() {
       <div className="card p-5">
         <h2 className="font-semibold mb-3">Présents aujourd'hui — {DAY_LABELS[todayDow]}</h2>
         {todayPresent.length === 0 && <p className="text-sm text-slate-400">Aucun créneau de travail aujourd'hui.</p>}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {todayPresent.map((s: any) => (
-            <div key={s.id} className="text-sm border border-slate-100 rounded-lg p-2">
-              <p className="font-medium">{s.profiles?.first_name} {s.profiles?.last_name}</p>
-              <p className="text-xs text-slate-500">{shiftPeriodLabel(s.start_time)} — {s.machines?.name || "Non affecté"}</p>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          {todayPresent.map((s: any) => {
+            const isMatin = shiftPeriodLabel(s.start_time) === "Matin";
+            return (
+              <div
+                key={s.id}
+                className={`text-sm rounded-lg p-2.5 border ${isMatin ? "bg-amber-50/40 border-amber-100" : "bg-indigo-50/40 border-indigo-100"}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.machines?.color_hex || "#94a3b8" }} />
+                  <p className="font-medium">{s.profiles?.first_name} {s.profiles?.last_name}</p>
+                </div>
+                <p className={`text-xs mt-0.5 ${isMatin ? "text-amber-700" : "text-indigo-700"}`}>
+                  {isMatin ? "☀️ Matin" : "🌙 Soir"} — {s.machines?.name || "Non affecté"}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {pendingLeaves && pendingLeaves.length > 0 && (
         <div className="card p-5">
           <h2 className="font-semibold mb-3">Demandes en attente</h2>
-          {pendingLeaves.map((l: any) => (
-            <p key={l.id} className="text-sm">{l.profiles?.first_name} {l.profiles?.last_name} — {l.type} du {l.date_start} au {l.date_end}</p>
-          ))}
-          <Link href="/demandes" className="text-sm text-brand-600 hover:underline mt-2 inline-block">Traiter les demandes →</Link>
+          <div className="space-y-2">
+            {pendingLeaves.map((l: any) => {
+              const type = l.type as LeaveType;
+              return (
+                <div key={l.id} className="flex items-center gap-2 text-sm">
+                  <span className={`badge border ${LEAVE_TYPE_COLORS[type] || "bg-slate-100 text-slate-600 border-slate-200"}`}>
+                    {LEAVE_TYPE_LABELS[type] || l.type}
+                  </span>
+                  <span>{l.profiles?.first_name} {l.profiles?.last_name}</span>
+                  <span className="text-slate-400">— du {l.date_start} au {l.date_end}</span>
+                </div>
+              );
+            })}
+          </div>
+          <Link href="/demandes" className="text-sm text-brand-600 hover:underline mt-3 inline-block">Traiter les demandes →</Link>
         </div>
       )}
     </div>
   );
 }
 
-function Stat({ label, value, link }: { label: string; value: string; link?: string }) {
+const ACCENT: Record<string, { bg: string; text: string }> = {
+  slate: { bg: "bg-slate-100", text: "text-slate-600" },
+  blue: { bg: "bg-blue-50", text: "text-blue-600" },
+  amber: { bg: "bg-amber-50", text: "text-amber-600" },
+  emerald: { bg: "bg-emerald-50", text: "text-emerald-600" },
+  purple: { bg: "bg-purple-50", text: "text-purple-600" },
+};
+
+function StatCard({ label, value, accent, icon, link }: { label: string; value: number; accent: string; icon: string; link?: string }) {
+  const a = ACCENT[accent] || ACCENT.slate;
   const content = (
-    <div className="card p-4">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="text-2xl font-semibold mt-1">{value}</p>
+    <div className="card p-4 flex items-center gap-3">
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0 ${a.bg}`}>{icon}</div>
+      <div>
+        <p className={`text-2xl font-semibold leading-tight ${a.text}`}>{value}</p>
+        <p className="text-xs text-slate-500">{label}</p>
+      </div>
     </div>
   );
   return link ? <Link href={link}>{content}</Link> : content;
+}
+
+function ShiftRow({ shift }: { shift: any }) {
+  if (shift.shift_type !== "work") {
+    const type = shift.shift_type as ShiftType;
+    return (
+      <p className="text-sm">
+        <span className={`badge border ${SHIFT_TYPE_COLORS[type] || "bg-slate-100 text-slate-600 border-slate-200"}`}>
+          {SHIFT_TYPE_LABELS[type] || shift.shift_type}
+        </span>
+      </p>
+    );
+  }
+  const isMatin = shiftPeriodLabel(shift.start_time) === "Matin";
+  return (
+    <div className={`text-sm rounded-lg p-2.5 border inline-flex items-center gap-2 ${isMatin ? "bg-amber-50/40 border-amber-100" : "bg-indigo-50/40 border-indigo-100"}`}>
+      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: shift.machines?.color_hex || "#94a3b8" }} />
+      <span className={isMatin ? "text-amber-700" : "text-indigo-700"}>{isMatin ? "☀️ Matin" : "🌙 Soir"}</span>
+      <span>— {shift.machines?.name || "Non affecté"}</span>
+    </div>
+  );
 }

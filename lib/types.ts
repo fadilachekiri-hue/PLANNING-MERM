@@ -61,6 +61,20 @@ export const SHIFT_TYPE_LABELS: Record<ShiftType, string> = {
   fo: "FO",
 };
 
+export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
+  conge: "Congé",
+  rtt: "RTT",
+  absence: "Absence",
+  indisponibilite: "Indisponibilité",
+};
+
+export const LEAVE_TYPE_COLORS: Record<LeaveType, string> = {
+  conge: "bg-purple-50 text-purple-700 border-purple-200",
+  rtt: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  absence: "bg-red-50 text-red-700 border-red-200",
+  indisponibilite: "bg-slate-100 text-slate-600 border-slate-200",
+};
+
 export const DAY_LABELS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 
 export const MORNING_SHIFT = { start: "08:00", end: "15:36" };
