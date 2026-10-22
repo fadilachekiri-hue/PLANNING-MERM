@@ -117,7 +117,7 @@ export async function findReplacementProposals(
     const profile: any = c.profiles;
     if (profile.id === excludeProfileId) continue;
     if (profile.status !== "active" || profile.role !== "member") continue;
-    if (isExcludedFromPlanning(profile.last_name)) continue;
+    if (isExcludedFromPlanning(profile.last_name, profile.first_name)) continue;
 
     const { data: dayShifts } = await admin.from("shifts").select("*").eq("week_id", weekId).eq("profile_id", profile.id).eq("day_of_week", dayOfWeek);
     const hasBlocking = (dayShifts || []).some((s) => ["conge", "rtt", "absence", "repos", "tp", "rr", "fo"].includes(s.shift_type));

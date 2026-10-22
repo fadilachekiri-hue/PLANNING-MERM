@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   // Seuls les MERM (role "member") sont proposables en binôme — jamais la
   // propriétaire ou les admins, même si une compétence leur a été attribuée par erreur.
   const eligible = (competencies || []).filter(
-    (c: any) => c.profiles.status === "active" && c.profiles.role === "member" && !isExcludedFromPlanning(c.profiles.last_name)
+    (c: any) => c.profiles.status === "active" && c.profiles.role === "member" && !isExcludedFromPlanning(c.profiles.last_name, c.profiles.first_name)
   );
 
   const dow = dayOfWeekIndex(day);

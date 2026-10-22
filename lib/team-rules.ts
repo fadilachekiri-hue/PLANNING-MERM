@@ -14,8 +14,12 @@ function norm(s: string): string {
 /** Personnes à ne pas prendre en compte pour le moment dans les plannings. */
 export const EXCLUDED_FROM_PLANNING = ["teixeira"].map(norm);
 
-export function isExcludedFromPlanning(lastName: string): boolean {
-  return EXCLUDED_FROM_PLANNING.includes(norm(lastName));
+// Comparé sur last_name ET first_name : au moins un profil a ces deux
+// champs inversés en base (le nom de famille s'est retrouvé dans
+// first_name), comme déjà pris en compte par le matching d'import dans
+// /api/setup/assigner-postes et /api/planning/semaines/[id]/reparer-postes.
+export function isExcludedFromPlanning(lastName: string, firstName?: string): boolean {
+  return EXCLUDED_FROM_PLANNING.includes(norm(lastName)) || (!!firstName && EXCLUDED_FROM_PLANNING.includes(norm(firstName)));
 }
 
 /** Référent·e·s par poste (repère technique, à privilégier comme encadrant). */

@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { addDaysToIso, formatDayShort } from "@/lib/week";
-import { DAY_LABELS, SHIFT_TYPE_LABELS, type ShiftType } from "@/lib/types";
+import { DAY_LABELS, SHIFT_TYPE_LABELS, MORNING_SHIFT, EVENING_SHIFT, type ShiftType } from "@/lib/types";
 import { holidayName } from "@/lib/holidays";
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
@@ -23,26 +24,39 @@ function machineNameLines(name: string): string[] {
   return [name.slice(0, idx), name.slice(idx + 1)];
 }
 
+type Period = "matin" | "soir";
+type CellKey = { machineId: string; day: number; period: Period };
+
 export default function ApercuClient({
+  isAdmin,
   startDate,
   week,
   machines,
   workShifts,
   leaveShifts,
   closures,
+  merms,
 }: {
+  isAdmin: boolean;
   startDate: string;
   week: any;
   machines: any[];
   workShifts: any[];
   leaveShifts: any[];
   closures: any[];
+  merms: any[];
 }) {
   const days = [0, 1, 2, 3, 4].map((d) => ({
     day: d,
     label: DAY_LABELS[d],
     dateIso: addDaysToIso(startDate, d),
   }));
+
+  const [editingCell, setEditingCell] = useState<CellKey | null>(null);
+  const [replaceSelections, setReplaceSelections] = useState<Record<string, string>>({});
+  const [addProfileId, setAddProfileId] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const today = new Date();
   const generatedOn = today.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -51,6 +65,92 @@ export default function ApercuClient({
   function goTo(offsetWeeks: number) {
     const next = addDaysToIso(startDate, offsetWeeks * 7);
     window.location.href = `/planning/apercu?semaine=${next}`;
+  }
+
+  function toggleCell(cell: CellKey) {
+    const same = editingCell && editingCell.machineId === cell.machineId && editingCell.day === cell.day && editingCell.period === cell.period;
+    setEditingCell(same ? null : cell);
+    setAddProfileId("");
+    setActionError(null);
+  }
+
+  async function replaceShift(shiftId: string) {
+    const newProfileId = replaceSelections[shiftId];
+    if (!newProfileId) return;
+    setBusyId(shiftId);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/planning/creneaux/${shiftId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileId: newProfileId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        window.location.reload();
+      } else if (res.status === 409) {
+        setActionError("Cette personne a déjà un créneau qui chevauche cet horaire ce jour-là.");
+      } else {
+        setActionError(data?.error || `Erreur serveur (${res.status}).`);
+      }
+    } catch (e: any) {
+      setActionError(e?.message || "Échec de connexion au serveur.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function removeShift(shiftId: string) {
+    if (!confirm("Retirer cette personne de ce créneau ?")) return;
+    setBusyId(shiftId);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/planning/creneaux/${shiftId}`, { method: "DELETE" });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const data = await res.json().catch(() => null);
+        setActionError(data?.error || `Erreur serveur (${res.status}).`);
+      }
+    } catch (e: any) {
+      setActionError(e?.message || "Échec de connexion au serveur.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function addToCell(machineId: string, day: number, period: Period) {
+    if (!week || !addProfileId) return;
+    setBusyId("adding");
+    setActionError(null);
+    try {
+      const times = period === "matin" ? MORNING_SHIFT : EVENING_SHIFT;
+      const res = await fetch("/api/planning/creneaux", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekId: week.id,
+          profileId: addProfileId,
+          dayOfWeek: day,
+          startTime: times.start,
+          endTime: times.end,
+          shiftType: "work",
+          machineId,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        window.location.reload();
+      } else if (res.status === 409) {
+        setActionError("Cette personne a déjà un créneau qui chevauche cet horaire ce jour-là.");
+      } else {
+        setActionError(data?.error || `Erreur serveur (${res.status}).`);
+      }
+    } catch (e: any) {
+      setActionError(e?.message || "Échec de connexion au serveur.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -62,9 +162,15 @@ export default function ApercuClient({
         </div>
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={() => window.print()}>🖨️ Imprimer / PDF</button>
-          <Link href="/planning/postes" className="btn-primary">✏️ Modifier le planning</Link>
+          <Link href="/planning/postes" className="btn-secondary">Vue détaillée</Link>
         </div>
       </div>
+
+      {isAdmin && week && (
+        <p className="text-xs text-slate-400 print:hidden">
+          Clique sur ✏️ à côté d'un poste pour remplacer ou retirer une personne, ou en ajouter une directement depuis cette vue.
+        </p>
+      )}
 
       {!week && (
         <div className="card p-8 text-center text-slate-400 space-y-3">
@@ -74,7 +180,7 @@ export default function ApercuClient({
       )}
 
       {week && (
-        <div className="card overflow-hidden print:shadow-none print:border-0">
+        <div className="card overflow-hidden print:shadow-none print:border-0 print:rounded-none">
           {/* En-tête façon document */}
           <div className="px-5 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex items-center justify-between flex-wrap gap-1">
             <div>
@@ -84,8 +190,8 @@ export default function ApercuClient({
             <p className="text-xs text-indigo-100">Généré le {generatedOn}</p>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse min-w-[760px]">
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full text-sm border-collapse min-w-[760px] print:min-w-0 print:w-full print:table-fixed">
               <thead>
                 <tr>
                   <th className="px-3 py-2 bg-slate-100 text-left text-xs uppercase tracking-wide text-slate-500 w-28">Poste</th>
@@ -137,6 +243,10 @@ export default function ApercuClient({
                               s.day_of_week === d.day &&
                               (isMatin ? s.start_time < "13:00" : s.start_time >= "13:00")
                           );
+                          const cell: CellKey = { machineId: machine.id, day: d.day, period };
+                          const isEditingThis =
+                            !!editingCell && editingCell.machineId === cell.machineId && editingCell.day === cell.day && editingCell.period === cell.period;
+                          const closedHere = holiday || closedThisPeriod;
 
                           return (
                             <td key={d.day} className="px-2 py-1.5 align-top border-r border-white">
@@ -156,7 +266,7 @@ export default function ApercuClient({
                                       >
                                         {initials(s.profiles?.first_name, s.profiles?.last_name)}
                                       </span>
-                                      <div className="min-w-0">
+                                      <div className="min-w-0 flex-1">
                                         <p className="text-xs font-medium text-slate-800 truncate">
                                           {s.profiles?.first_name} {s.profiles?.last_name}
                                         </p>
@@ -164,6 +274,71 @@ export default function ApercuClient({
                                       </div>
                                     </div>
                                   ))}
+                                </div>
+                              )}
+
+                              {isAdmin && !closedHere && (
+                                <button
+                                  className="print:hidden mt-1 text-[10px] text-slate-400 hover:text-brand-600"
+                                  onClick={() => toggleCell(cell)}
+                                >
+                                  {isEditingThis ? "Fermer" : "✏️ Modifier"}
+                                </button>
+                              )}
+
+                              {isAdmin && isEditingThis && (
+                                <div className="print:hidden mt-1.5 space-y-1.5 border-t border-slate-200 pt-1.5">
+                                  {occupants.map((s: any) => (
+                                    <div key={s.id} className="flex items-center gap-1 flex-wrap">
+                                      <span className="text-[10px] text-slate-500 truncate max-w-[70px]">{s.profiles?.last_name}</span>
+                                      <select
+                                        className="input text-[11px] py-0.5 px-1 flex-1 min-w-[90px]"
+                                        value={replaceSelections[s.id] || ""}
+                                        onChange={(e) => setReplaceSelections((r) => ({ ...r, [s.id]: e.target.value }))}
+                                      >
+                                        <option value="">Remplacer par...</option>
+                                        {merms
+                                          .filter((m) => m.id !== s.profile_id)
+                                          .map((m) => (
+                                            <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                                          ))}
+                                      </select>
+                                      <button
+                                        className="btn-primary text-[10px] px-1.5 py-0.5"
+                                        disabled={!replaceSelections[s.id] || busyId === s.id}
+                                        onClick={() => replaceShift(s.id)}
+                                      >
+                                        OK
+                                      </button>
+                                      <button
+                                        className="btn-secondary text-[10px] px-1.5 py-0.5"
+                                        disabled={busyId === s.id}
+                                        onClick={() => removeShift(s.id)}
+                                      >
+                                        Retirer
+                                      </button>
+                                    </div>
+                                  ))}
+                                  <div className="flex items-center gap-1">
+                                    <select
+                                      className="input text-[11px] py-0.5 px-1 flex-1"
+                                      value={addProfileId}
+                                      onChange={(e) => setAddProfileId(e.target.value)}
+                                    >
+                                      <option value="">+ Ajouter...</option>
+                                      {merms.map((m) => (
+                                        <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      className="btn-secondary text-[10px] px-1.5 py-0.5"
+                                      disabled={!addProfileId || busyId === "adding"}
+                                      onClick={() => addToCell(machine.id, d.day, period)}
+                                    >
+                                      Ajouter
+                                    </button>
+                                  </div>
+                                  {actionError && <p className="text-[10px] text-red-600">{actionError}</p>}
                                 </div>
                               )}
                             </td>

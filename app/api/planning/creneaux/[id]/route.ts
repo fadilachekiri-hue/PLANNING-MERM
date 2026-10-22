@@ -20,13 +20,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const startTime = body.startTime ?? current.start_time;
   const endTime = body.endTime ?? current.end_time;
+  const newProfileId = "profileId" in body ? body.profileId : current.profile_id;
 
   if (startTime && endTime && !body.force) {
     const { data: existing } = await admin
       .from("shifts")
       .select("id, start_time, end_time")
       .eq("week_id", current.week_id)
-      .eq("profile_id", current.profile_id)
+      .eq("profile_id", newProfileId)
       .eq("day_of_week", current.day_of_week)
       .neq("id", params.id);
 
@@ -38,10 +39,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const machineChanged = "machineId" in body && body.machineId !== current.machine_id;
   const timeChanged = startTime !== current.start_time || endTime !== current.end_time;
+  const profileChanged = newProfileId !== current.profile_id;
 
   const { data: shift, error } = await admin
     .from("shifts")
     .update({
+      profile_id: newProfileId,
       start_time: startTime,
       end_time: endTime,
       shift_type: body.shiftType ?? current.shift_type,
@@ -56,7 +59,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  if (machineChanged || timeChanged) {
+  if (profileChanged) {
+    await maybeNotifyChange(admin, current.week_id, current.profile_id, "creneau_modifie", "Vous avez été retiré(e) d'un créneau (remplacement).");
+    await maybeNotifyChange(admin, current.week_id, newProfileId, "creneau_modifie", "Vous avez été affecté(e) à un créneau (remplacement).");
+  } else if (machineChanged || timeChanged) {
     await maybeNotifyChange(
       admin,
       current.week_id,
