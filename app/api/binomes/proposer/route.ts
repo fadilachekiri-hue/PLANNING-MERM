@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAdminOrOwner } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { mondayOf, addDaysToIso } from "@/lib/week";
+import { mondayOf } from "@/lib/week";
 import { computeWorkedHours } from "@/lib/hours";
-import { proposePairs, type Candidate } from "@/lib/pairing";
-import { isExcludedFromPlanning, isHardUnavailable, conflictingWeekMachine, pairKey } from "@/lib/team-rules";
+import { proposePairs, computePairContinuity, type Candidate } from "@/lib/pairing";
+import { isExcludedFromPlanning, isHardUnavailable, conflictingWeekMachine } from "@/lib/team-rules";
 
 function dayOfWeekIndex(iso: string): number {
   const jsDay = new Date(iso + "T00:00:00").getDay();
@@ -72,33 +72,10 @@ export async function POST(request: Request) {
     otherMachineId = om?.id || null;
   }
 
-  // Rotation : fréquence des binômes déjà formés sur ce poste au cours des 6 dernières semaines.
-  const sinceIso = addDaysToIso(monday, -42);
-  const { data: recentWeeks } = await admin.from("weeks").select("id").lt("start_date", monday).gte("start_date", sinceIso);
-  const recentWeekIds = (recentWeeks || []).map((w) => w.id);
-  const recentPairFrequency: Record<string, number> = {};
-  if (recentWeekIds.length > 0) {
-    const { data: recentShifts } = await admin
-      .from("shifts")
-      .select("profile_id, pair_id")
-      .eq("machine_id", machineId)
-      .in("week_id", recentWeekIds)
-      .not("pair_id", "is", null);
-    const byPair = new Map<string, string[]>();
-    for (const s of recentShifts || []) {
-      const arr = byPair.get(s.pair_id as string) || [];
-      arr.push(s.profile_id);
-      byPair.set(s.pair_id as string, arr);
-    }
-    for (const profileIds of byPair.values()) {
-      for (let i = 0; i < profileIds.length; i++) {
-        for (let j = i + 1; j < profileIds.length; j++) {
-          const key = pairKey(profileIds[i], profileIds[j]);
-          recentPairFrequency[key] = (recentPairFrequency[key] || 0) + 1;
-        }
-      }
-    }
-  }
+  // Continuité : favoriser les binômes déjà formés la/les semaine(s)
+  // précédente(s) sur ce poste (consigne de la cadre), plutôt que de les
+  // dissoudre — dans la limite de ce que permettent les disponibilités.
+  const pairContinuity = await computePairContinuity(admin, machineId, monday);
 
   const candidates: Candidate[] = [];
   for (const c of eligible) {
@@ -146,7 +123,7 @@ export async function POST(request: Request) {
     slotHours,
     slotIsMorning,
     machineName,
-    recentPairFrequency,
+    pairContinuity,
   });
 
   return NextResponse.json({ ok: true, ...result, rule: { teamSize, minAutonomous, allowTraining } });

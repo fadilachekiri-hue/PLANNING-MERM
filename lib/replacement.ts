@@ -1,9 +1,8 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { addDaysToIso } from "@/lib/week";
 import { computeWorkedHours } from "@/lib/hours";
-import { proposePairs, type Candidate, type Combo } from "@/lib/pairing";
-import { isExcludedFromPlanning, isHardUnavailable, pairKey } from "@/lib/team-rules";
+import { proposePairs, computePairContinuity, type Candidate, type Combo } from "@/lib/pairing";
+import { isExcludedFromPlanning, isHardUnavailable } from "@/lib/team-rules";
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
   return aStart < bEnd && bStart < aEnd;
@@ -84,32 +83,7 @@ export async function findReplacementProposals(
     .gte("date_end", dateIso);
   const onLeave = new Set((approvedLeaves || []).map((l) => l.profile_id));
 
-  const sinceIso = addDaysToIso(monday, -42);
-  const { data: recentWeeks } = await admin.from("weeks").select("id").lt("start_date", monday).gte("start_date", sinceIso);
-  const recentWeekIds = (recentWeeks || []).map((w) => w.id);
-  const recentPairFrequency: Record<string, number> = {};
-  if (recentWeekIds.length > 0) {
-    const { data: recentShifts } = await admin
-      .from("shifts")
-      .select("profile_id, pair_id")
-      .eq("machine_id", machineId)
-      .in("week_id", recentWeekIds)
-      .not("pair_id", "is", null);
-    const byPair = new Map<string, string[]>();
-    for (const s of recentShifts || []) {
-      const arr = byPair.get(s.pair_id as string) || [];
-      arr.push(s.profile_id);
-      byPair.set(s.pair_id as string, arr);
-    }
-    for (const profileIds of byPair.values()) {
-      for (let i = 0; i < profileIds.length; i++) {
-        for (let j = i + 1; j < profileIds.length; j++) {
-          const key = pairKey(profileIds[i], profileIds[j]);
-          recentPairFrequency[key] = (recentPairFrequency[key] || 0) + 1;
-        }
-      }
-    }
-  }
+  const pairContinuity = await computePairContinuity(admin, machineId, monday);
 
   const candidates: Candidate[] = [];
   const mustInclude: Candidate[] = [];
@@ -158,7 +132,7 @@ export async function findReplacementProposals(
     slotHours,
     slotIsMorning,
     machineName,
-    recentPairFrequency,
+    pairContinuity,
     mustInclude,
     openSeats,
   });
