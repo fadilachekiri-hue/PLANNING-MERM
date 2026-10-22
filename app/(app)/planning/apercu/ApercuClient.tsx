@@ -308,20 +308,31 @@ export default function ApercuClient({
                                             <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
                                           ))}
                                       </select>
-                                      <button
-                                        className="btn-primary text-[10px] px-1.5 py-0.5"
-                                        disabled={!replaceSelections[s.id] || busyId === s.id}
-                                        onClick={() => replaceShift(s.id)}
-                                      >
-                                        OK
-                                      </button>
-                                      <button
-                                        className="btn-secondary text-[10px] px-1.5 py-0.5"
-                                        disabled={busyId === s.id}
-                                        onClick={() => removeShift(s.id)}
-                                      >
-                                        Retirer
-                                      </button>
+                                      {replaceSelections[s.id] ? (
+                                        <button
+                                          className="btn-primary text-[10px] px-1.5 py-0.5"
+                                          disabled={busyId === s.id}
+                                          onClick={() => replaceShift(s.id)}
+                                        >
+                                          OK
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className="btn-secondary text-[10px] px-1.5 py-0.5"
+                                          disabled={busyId === s.id}
+                                          onClick={() => removeShift(s.id)}
+                                        >
+                                          Retirer
+                                        </button>
+                                      )}
+                                      {replaceSelections[s.id] && (
+                                        <button
+                                          className="text-[10px] text-slate-400 underline"
+                                          onClick={() => setReplaceSelections((r) => ({ ...r, [s.id]: "" }))}
+                                        >
+                                          Annuler
+                                        </button>
+                                      )}
                                     </div>
                                   ))}
                                   <div className="flex items-center gap-1">
@@ -344,6 +355,12 @@ export default function ApercuClient({
                                     </button>
                                   </div>
                                   {actionError && <p className="text-[10px] text-red-600">{actionError}</p>}
+                                  <button
+                                    className="btn-secondary text-[10px] px-2 py-0.5 w-full"
+                                    onClick={() => setEditingCell(null)}
+                                  >
+                                    ✓ Fermer sans changement
+                                  </button>
                                 </div>
                               )}
                             </td>
