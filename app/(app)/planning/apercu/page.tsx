@@ -40,10 +40,13 @@ export default async function ApercuPage({ searchParams }: { searchParams: { sem
     ]);
     workShifts = (ws || []).filter((s: any) => !isExcludedFromPlanning(s.profiles?.last_name || "", s.profiles?.first_name || ""));
     leaveShifts = (ls || []).filter((s: any) => !isExcludedFromPlanning(s.profiles?.last_name || "", s.profiles?.first_name || ""));
+    // Pas de filtre sur job_title ici (contrairement à la Vue par Poste) :
+    // l'Aperçu doit permettre d'affecter n'importe quel membre de l'équipe de
+    // la semaine à n'importe quel poste (ex. Gloria Fonteneau sur GQ, bien
+    // que son intitulé ne soit pas "MERM").
     merms = (wm || [])
       .map((w: any) => w.profiles)
-      .filter((m: any) => m && (!m.job_title || m.job_title.trim().toUpperCase() === "MERM"))
-      .filter((m: any) => !isExcludedFromPlanning(m.last_name || "", m.first_name || ""))
+      .filter((m: any) => m && !isExcludedFromPlanning(m.last_name || "", m.first_name || ""))
       .sort((a: any, b: any) => a.last_name.localeCompare(b.last_name));
   }
 
