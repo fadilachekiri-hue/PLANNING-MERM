@@ -17,6 +17,12 @@ function tint(hex: string, alpha: string) {
   return `${hex}${alpha}`;
 }
 
+function machineNameLines(name: string): string[] {
+  const idx = name.indexOf("-");
+  if (idx === -1) return [name];
+  return [name.slice(0, idx), name.slice(idx + 1)];
+}
+
 export default function ApercuClient({
   startDate,
   week,
@@ -55,13 +61,16 @@ export default function ApercuClient({
           <button className="btn-secondary" onClick={() => goTo(1)}>Semaine suivante →</button>
         </div>
         <div className="flex gap-2">
-          <Link href="/planning/postes" className="btn-secondary">← Retour à la vue par poste</Link>
-          <button className="btn-primary" onClick={() => window.print()}>🖨️ Imprimer / PDF</button>
+          <button className="btn-secondary" onClick={() => window.print()}>🖨️ Imprimer / PDF</button>
+          <Link href="/planning/postes" className="btn-primary">✏️ Modifier le planning</Link>
         </div>
       </div>
 
       {!week && (
-        <div className="card p-8 text-center text-slate-400">Aucun planning créé pour cette semaine.</div>
+        <div className="card p-8 text-center text-slate-400 space-y-3">
+          <p>Aucun planning créé pour cette semaine.</p>
+          <Link href="/planning/postes" className="btn-primary inline-block">✏️ Créer / modifier le planning</Link>
+        </div>
       )}
 
       {week && (
@@ -102,8 +111,12 @@ export default function ApercuClient({
                         {pIdx === 0 && (
                           <td rowSpan={2} className="px-3 py-2 align-middle font-semibold text-slate-700 border-r border-white">
                             <span className="inline-flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: machine.color_hex }} />
-                              {machine.name}
+                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: machine.color_hex }} />
+                              <span className="leading-tight">
+                                {machineNameLines(machine.name).map((line, i) => (
+                                  <span key={i} className="block">{line}</span>
+                                ))}
+                              </span>
                             </span>
                           </td>
                         )}
@@ -171,11 +184,12 @@ export default function ApercuClient({
                         {dayLeaves.length === 0 ? (
                           <span className="text-xs text-slate-300">—</span>
                         ) : (
-                          <div className="space-y-0.5">
+                          <div className="space-y-1">
                             {dayLeaves.map((s: any) => (
-                              <p key={s.id} className="text-xs text-red-700">
+                              <p key={s.id} className="text-xs text-red-700 leading-tight">
                                 {s.profiles?.first_name} {s.profiles?.last_name}
-                                <span className="text-red-400"> — {SHIFT_TYPE_LABELS[s.shift_type as ShiftType] || s.shift_type}</span>
+                                <br />
+                                <span className="text-red-400">{SHIFT_TYPE_LABELS[s.shift_type as ShiftType] || s.shift_type}</span>
                               </p>
                             ))}
                           </div>

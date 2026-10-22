@@ -114,7 +114,7 @@ export default function PlanningClient({
         </div>
         <div className="flex gap-2 print:hidden">
           <button className="btn-secondary" onClick={() => window.print()}>Imprimer / PDF</button>
-          <Link href="/planning/postes" className="btn-secondary">Planning</Link>
+          <Link href="/planning/apercu" className="btn-secondary">Planning</Link>
           {isAdmin && !week && (
             <button className="btn-primary" onClick={createWeek} disabled={creating}>
               {creating ? "Création..." : "Créer cette semaine"}

@@ -1,6 +1,7 @@
 import { getCurrentProfile } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { mondayOf, addDaysToIso } from "@/lib/week";
+import { isExcludedFromPlanning } from "@/lib/team-rules";
 import ApercuClient from "./ApercuClient";
 
 export default async function ApercuPage({ searchParams }: { searchParams: { semaine?: string } }) {
@@ -34,8 +35,8 @@ export default async function ApercuPage({ searchParams }: { searchParams: { sem
         .eq("week_id", week.id)
         .neq("shift_type", "work"),
     ]);
-    workShifts = ws || [];
-    leaveShifts = ls || [];
+    workShifts = (ws || []).filter((s: any) => !isExcludedFromPlanning(s.profiles?.last_name || ""));
+    leaveShifts = (ls || []).filter((s: any) => !isExcludedFromPlanning(s.profiles?.last_name || ""));
   }
 
   return (
