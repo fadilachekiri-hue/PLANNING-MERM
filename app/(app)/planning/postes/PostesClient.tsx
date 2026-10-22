@@ -54,7 +54,13 @@ export default function PostesClient({
       const data = await res.json().catch(() => null);
       if (res.ok && data) {
         setDecembreReport(data.report);
-        setTimeout(() => window.location.reload(), 1500);
+        // Direction explicite vers la semaine du 1er décembre : rester sur la
+        // semaine actuellement affichée après le rechargement donnait
+        // l'impression que rien ne s'était passé (le bouton revenait juste à
+        // son état initial sans qu'aucun changement ne soit visible à l'écran).
+        setTimeout(() => {
+          window.location.href = "/planning/postes?semaine=2026-11-30";
+        }, 2500);
       } else {
         setDecembreError(data?.error || `Erreur serveur (${res.status}).`);
       }
