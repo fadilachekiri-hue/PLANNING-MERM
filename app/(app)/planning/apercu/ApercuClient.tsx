@@ -14,6 +14,11 @@ function initials(firstName: string, lastName: string) {
   return `${(firstName || "?").charAt(0)}${(lastName || "?").charAt(0)}`.toUpperCase();
 }
 
+function shortName(firstName: string, lastName: string) {
+  const f = (firstName || "").charAt(0).toUpperCase();
+  return f ? `${f}. ${lastName || ""}` : lastName || "";
+}
+
 function tint(hex: string, alpha: string) {
   return `${hex}${alpha}`;
 }
@@ -268,7 +273,7 @@ export default function ApercuClient({
                                       </span>
                                       <div className="min-w-0 flex-1">
                                         <p className="text-xs font-medium text-slate-800 truncate">
-                                          {s.profiles?.first_name} {s.profiles?.last_name}
+                                          {shortName(s.profiles?.first_name, s.profiles?.last_name)}
                                         </p>
                                         {s.profiles?.phone && <p className="text-[10px] text-slate-400 truncate">{s.profiles.phone}</p>}
                                       </div>
@@ -362,7 +367,7 @@ export default function ApercuClient({
                           <div className="space-y-1">
                             {dayLeaves.map((s: any) => (
                               <p key={s.id} className="text-xs text-red-700 leading-tight">
-                                {s.profiles?.first_name} {s.profiles?.last_name}
+                                {shortName(s.profiles?.first_name, s.profiles?.last_name)}
                                 <br />
                                 <span className="text-red-400">{SHIFT_TYPE_LABELS[s.shift_type as ShiftType] || s.shift_type}</span>
                               </p>
