@@ -6,7 +6,7 @@ import type { Role } from "@/lib/types";
 
 const NAV: Array<{ href: string; label: string; roles: Role[] }> = [
   { href: "/tableau-de-bord", label: "Tableau de bord", roles: ["owner", "admin", "member"] },
-  { href: "/planning/postes", label: "Planning", roles: ["owner", "admin", "member"] },
+  { href: "/planning/apercu", label: "Planning", roles: ["owner", "admin", "member"] },
   { href: "/planning", label: "Vue par MERM", roles: ["owner", "admin", "member"] },
   { href: "/binomes", label: "Binômes", roles: ["owner", "admin"] },
   { href: "/equipe", label: "Équipe", roles: ["owner", "admin"] },

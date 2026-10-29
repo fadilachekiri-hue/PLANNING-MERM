@@ -33,7 +33,7 @@ export default function PostesClient({
   closures: any[];
 }) {
   const [assigning, setAssigning] = useState<string | null>(null);
-  const [addingTo, setAddingTo] = useState<{ machineId: string; day: number } | null>(null);
+  const [addingTo, setAddingTo] = useState<{ machineId: string; day: number; period: "matin" | "soir" } | null>(null);
   const [addProfileId, setAddProfileId] = useState("");
   const [addPeriod, setAddPeriod] = useState<"matin" | "soir">("matin");
   const [addSaving, setAddSaving] = useState(false);
@@ -50,11 +50,17 @@ export default function PostesClient({
     setDecembreReport(null);
     setDecembreError(null);
     try {
-      const res = await fetch(`/api/planning/semaines/construire-decembre`, { method: "POST" });
+      const res = await fetch(`/api/planning/semaines/construire-decembre-valide`, { method: "POST" });
       const data = await res.json().catch(() => null);
       if (res.ok && data) {
         setDecembreReport(data.report);
-        setTimeout(() => window.location.reload(), 1500);
+        // Direction explicite vers la semaine du 1er décembre : rester sur la
+        // semaine actuellement affichée après le rechargement donnait
+        // l'impression que rien ne s'était passé (le bouton revenait juste à
+        // son état initial sans qu'aucun changement ne soit visible à l'écran).
+        setTimeout(() => {
+          window.location.href = "/planning/postes?semaine=2026-11-30";
+        }, 2500);
       } else {
         setDecembreError(data?.error || `Erreur serveur (${res.status}).`);
       }
@@ -95,10 +101,10 @@ export default function PostesClient({
     window.location.href = `/planning/postes?semaine=${addDaysToIso(startDate, offsetWeeks * 7)}`;
   }
 
-  function openAdd(machineId: string, day: number) {
-    setAddingTo({ machineId, day });
+  function openAdd(machineId: string, day: number, period: "matin" | "soir") {
+    setAddingTo({ machineId, day, period });
     setAddProfileId("");
-    setAddPeriod("matin");
+    setAddPeriod(period);
     setAddError(null);
   }
 
@@ -180,9 +186,10 @@ export default function PostesClient({
           )}
           {isAdmin && (
             <button className="btn-secondary text-xs" onClick={construireDecembre} disabled={buildingDecembre}>
-              {buildingDecembre ? "Construction..." : "Construire le planning décembre 2026"}
+              {buildingDecembre ? "Application..." : "Appliquer le planning validé (1-21 déc.)"}
             </button>
           )}
+          <Link href={`/planning/apercu?semaine=${startDate}`} className="btn-secondary">📄 Aperçu imprimable</Link>
           <button className="btn-secondary" onClick={() => window.print()}>Imprimer / PDF</button>
           <Link href="/planning" className="btn-secondary">Vue par MERM</Link>
         </div>
@@ -291,112 +298,151 @@ export default function PostesClient({
       )}
 
       {week && (
-        <div className="space-y-4">
-          {machines.map((machine) => (
-            <div key={machine.id} className="card p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-3 h-3 rounded" style={{ backgroundColor: machine.color_hex }} />
-                <h3 className="font-semibold">{machine.name}</h3>
-              </div>
-              <div className="grid grid-cols-5 gap-2">
-                {DAY_LABELS.slice(0, 5).map((label, day) => {
-                  const dateIso = addDaysToIso(startDate, day);
-                  const holiday = holidayName(dateIso);
-                  const dayClosures = closures.filter((c) => c.machine_id === machine.id && c.date === dateIso);
-                  const closedAllDay = dayClosures.some((c) => !c.start_time);
+        <div className="space-y-6">
+          {machines.map((machine) => {
+            const machineShifts = shifts.filter((s) => s.machine_id === machine.id);
+            return (
+              <div key={machine.id} className="card overflow-hidden">
+                <div
+                  className="flex items-center justify-center gap-2 px-4 py-3 border-b-2"
+                  style={{ backgroundColor: `${machine.color_hex}26`, borderBottomColor: machine.color_hex }}
+                >
+                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: machine.color_hex }} />
+                  <h3 className="font-bold text-lg tracking-wide text-slate-800">{machine.name}</h3>
+                </div>
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse min-w-[480px]">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide">
+                      <th className="px-4 py-2 font-medium w-28 text-slate-400">Jour</th>
+                      <th className="px-4 py-2 font-semibold text-amber-700 bg-amber-50 border-l border-amber-100">☀️ Matin</th>
+                      <th className="px-4 py-2 font-semibold text-indigo-700 bg-indigo-50 border-l border-indigo-100">🌙 Soir</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DAY_LABELS.slice(0, 5).map((label, day) => {
+                      const dateIso = addDaysToIso(startDate, day);
+                      const holiday = holidayName(dateIso);
+                      const dayClosures = closures.filter((c) => c.machine_id === machine.id && c.date === dateIso);
+                      const closedAllDay = dayClosures.some((c) => !c.start_time);
+                      const dayShifts = machineShifts.filter((s) => s.day_of_week === day);
+                      const rules = minStaffing.filter((r) => r.machine_id === machine.id && r.day_of_week === day);
 
-                  const dayShifts = shifts.filter((s) => s.machine_id === machine.id && s.day_of_week === day);
-                  const rules = minStaffing.filter((r) => r.machine_id === machine.id && r.day_of_week === day);
-                  const shortages = closedAllDay || holiday || weekNotYetPlanned
-                    ? []
-                    : rules.filter((r) => {
-                        const closedNow = dayClosures.some((c) => c.start_time && overlaps(c.start_time, c.end_time, r.start_time, r.end_time));
-                        if (closedNow) return false;
-                        const covering = dayShifts.filter((s) => overlaps(s.start_time, s.end_time, r.start_time, r.end_time));
-                        return covering.length < r.min_count;
-                      });
+                      const rowTint = closedAllDay ? "bg-slate-50" : holiday ? "bg-amber-50/50" : day % 2 === 1 ? "bg-slate-50/50" : "";
 
-                  const xstrahlWithoutScanner =
-                    machine.id === xstrahlMachine?.id &&
-                    dayShifts.some((s) => {
-                      const scannerCovers = shifts.some(
-                        (o) => o.machine_id === scannerMachine?.id && o.day_of_week === day && overlaps(s.start_time, s.end_time, o.start_time, o.end_time)
-                      );
-                      return !scannerCovers;
-                    });
+                      function periodCell(period: "matin" | "soir") {
+                        const periodShifts = dayShifts.filter((s: any) =>
+                          period === "matin" ? s.start_time < "13:00" : s.start_time >= "13:00"
+                        );
+                        const periodRules = rules.filter((r: any) => (period === "matin" ? r.start_time < "13:00" : r.start_time >= "13:00"));
+                        const shortage =
+                          closedAllDay || holiday || weekNotYetPlanned
+                            ? []
+                            : periodRules.filter((r: any) => {
+                                const closedNow = dayClosures.some(
+                                  (c) => c.start_time && overlaps(c.start_time, c.end_time, r.start_time, r.end_time)
+                                );
+                                if (closedNow) return false;
+                                const covering = periodShifts.filter((s: any) => overlaps(s.start_time, s.end_time, r.start_time, r.end_time));
+                                return covering.length < r.min_count;
+                              });
+                        const partialClosure = dayClosures.find(
+                          (c) => c.start_time && overlaps(c.start_time, c.end_time, period === "matin" ? MORNING_SHIFT.start : EVENING_SHIFT.start, period === "matin" ? MORNING_SHIFT.end : EVENING_SHIFT.end)
+                        );
+                        const xstrahlWithoutScanner =
+                          machine.id === xstrahlMachine?.id &&
+                          periodShifts.some((s: any) => {
+                            const scannerCovers = shifts.some(
+                              (o) => o.machine_id === scannerMachine?.id && o.day_of_week === day && overlaps(s.start_time, s.end_time, o.start_time, o.end_time)
+                            );
+                            return !scannerCovers;
+                          });
+                        const isAddingHere = addingTo && addingTo.machineId === machine.id && addingTo.day === day && addingTo.period === period;
 
-                  return (
-                    <div key={day} className={`border rounded-lg p-2 min-h-[90px] ${closedAllDay ? "border-slate-200 bg-slate-50" : holiday ? "border-amber-200 bg-amber-50/40" : "border-slate-100"}`}>
-                      <p className="text-xs font-medium text-slate-500 mb-1">{label} <span className="font-normal text-slate-400">{formatDayShort(dateIso)}</span></p>
-                      {holiday && <p className="text-xs text-amber-700 font-medium">🎌 {holiday} — fermé, sauf programmation exceptionnelle</p>}
-                      {closedAllDay && (
-                        <p className="text-xs text-slate-500 font-medium">🔧 Fermé{dayClosures[0]?.reason ? ` — ${dayClosures[0].reason}` : ""}</p>
-                      )}
-                      {!closedAllDay && dayClosures.length > 0 && (
-                        <p className="text-xs text-slate-500 mb-1">
-                          🔧 Fermé {dayClosures[0].start_time.slice(0, 5)}-{dayClosures[0].end_time.slice(0, 5)}
-                          {dayClosures[0].reason ? ` — ${dayClosures[0].reason}` : ""}
-                        </p>
-                      )}
-                      {!closedAllDay && dayShifts.length === 0 && <p className="text-xs text-slate-300">—</p>}
-                      {!closedAllDay && dayShifts.map((s: any) => (
-                        <p key={s.id} className="text-xs mb-1">
-                          {s.profiles?.first_name} {s.profiles?.last_name?.charAt(0)}. <span className="text-slate-400">{shiftPeriodLabel(s.start_time)}</span>
-                        </p>
-                      ))}
-                      {shortages.length > 0 && (
-                        <p className="text-xs text-red-600 mt-1">⚠ Effectif manquant ({shortages.length})</p>
-                      )}
-                      {xstrahlWithoutScanner && (
-                        <p className="text-xs text-amber-600 mt-1">⚠ X-STRAHL sans Scanner en parallèle (règle à confirmer)</p>
-                      )}
-                      {isAdmin && !closedAllDay && (
-                        <div className="print:hidden">
-                          {addingTo && addingTo.machineId === machine.id && addingTo.day === day ? (
-                            <div className="mt-2 space-y-1 border-t border-slate-100 pt-2">
-                              <select className="input text-xs py-1" value={addProfileId} onChange={(e) => setAddProfileId(e.target.value)}>
-                                <option value="">Choisir un MERM...</option>
-                                {merms.map((m: any) => (
-                                  <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                        if (closedAllDay) return null; // fusionné sur toute la ligne, voir plus bas
+
+                        const periodStyle =
+                          period === "matin"
+                            ? "border-l border-amber-100 bg-amber-50/30"
+                            : "border-l border-indigo-100 bg-indigo-50/30";
+
+                        return (
+                          <td className={`px-4 py-2.5 align-top ${periodStyle}`}>
+                            {holiday && <p className="text-xs text-amber-700">Fermé (jour férié)</p>}
+                            {!holiday && partialClosure && (
+                              <p className="text-xs text-slate-500">
+                                Fermé {partialClosure.start_time.slice(0, 5)}-{partialClosure.end_time.slice(0, 5)}
+                                {partialClosure.reason ? ` — ${partialClosure.reason}` : ""}
+                              </p>
+                            )}
+                            {!holiday && periodShifts.length === 0 && <p className="text-sm text-slate-300">—</p>}
+                            {!holiday && periodShifts.length > 0 && (
+                              <ul className="space-y-0.5">
+                                {periodShifts.map((s: any) => (
+                                  <li key={s.id} className="text-sm text-slate-700">
+                                    {s.profiles?.first_name} {s.profiles?.last_name}
+                                  </li>
                                 ))}
-                              </select>
-                              <div className="flex gap-1">
-                                <button
-                                  type="button"
-                                  className={`flex-1 text-xs rounded px-2 py-1 border ${addPeriod === "matin" ? "bg-slate-800 text-white border-slate-800" : "border-slate-200"}`}
-                                  onClick={() => setAddPeriod("matin")}
-                                >
-                                  Matin
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`flex-1 text-xs rounded px-2 py-1 border ${addPeriod === "soir" ? "bg-slate-800 text-white border-slate-800" : "border-slate-200"}`}
-                                  onClick={() => setAddPeriod("soir")}
-                                >
-                                  Soir
-                                </button>
+                              </ul>
+                            )}
+                            {shortage.length > 0 && <p className="text-xs text-red-600 mt-1">Effectif manquant</p>}
+                            {xstrahlWithoutScanner && (
+                              <p className="text-xs text-amber-600 mt-1">X-STRAHL sans Scanner en parallèle</p>
+                            )}
+                            {isAdmin && !holiday && (
+                              <div className="print:hidden mt-1.5">
+                                {isAddingHere ? (
+                                  <div className="space-y-1 border-t border-slate-100 pt-1.5">
+                                    <select className="input text-xs py-1" value={addProfileId} onChange={(e) => setAddProfileId(e.target.value)} autoFocus>
+                                      <option value="">Choisir un MERM...</option>
+                                      {merms.map((m: any) => (
+                                        <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                                      ))}
+                                    </select>
+                                    {addError && <p className="text-xs text-red-600">{addError}</p>}
+                                    <div className="flex gap-1">
+                                      <button className="btn-primary text-xs flex-1" disabled={!addProfileId || addSaving} onClick={addDirectShift}>
+                                        {addSaving ? "..." : "Ajouter"}
+                                      </button>
+                                      <button className="btn-secondary text-xs" onClick={() => setAddingTo(null)}>Annuler</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button className="text-xs text-slate-400 hover:text-slate-700" onClick={() => openAdd(machine.id, day, period)}>
+                                    + Ajouter
+                                  </button>
+                                )}
                               </div>
-                              {addError && <p className="text-xs text-red-600">{addError}</p>}
-                              <div className="flex gap-1">
-                                <button className="btn-primary text-xs flex-1" disabled={!addProfileId || addSaving} onClick={addDirectShift}>
-                                  {addSaving ? "..." : "Ajouter"}
-                                </button>
-                                <button className="btn-secondary text-xs" onClick={() => setAddingTo(null)}>Annuler</button>
-                              </div>
-                            </div>
+                            )}
+                          </td>
+                        );
+                      }
+
+                      return (
+                        <tr key={day} className={`border-t border-slate-100 ${rowTint}`}>
+                          <td className="px-4 py-2.5 align-top">
+                            <p className="font-medium text-slate-700">{label}</p>
+                            <p className="text-xs text-slate-400">{formatDayShort(dateIso)}</p>
+                          </td>
+                          {closedAllDay ? (
+                            <td colSpan={2} className="px-4 py-2.5 text-sm text-slate-500 border-l border-slate-100">
+                              Fermé{dayClosures[0]?.reason ? ` — ${dayClosures[0].reason}` : ""}
+                            </td>
                           ) : (
-                            <button className="text-xs text-slate-400 hover:text-slate-700 mt-1" onClick={() => openAdd(machine.id, day)}>
-                              + Ajouter
-                            </button>
+                            <>
+                              {periodCell("matin")}
+                              {periodCell("soir")}
+                            </>
                           )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
